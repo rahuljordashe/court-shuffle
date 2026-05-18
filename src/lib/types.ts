@@ -8,6 +8,9 @@ export interface Player {
   partnerId: string | null
   /** For `pool` mode: the set of player ids this player may partner with. */
   poolIds: string[]
+  /** True when the player is temporarily out of the rotation. They stay on the
+   *  roster and keep their leaderboard record and constraints. */
+  away: boolean
 }
 
 export interface Team {

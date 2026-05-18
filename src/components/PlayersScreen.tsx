@@ -9,6 +9,8 @@ export function PlayersScreen() {
   const courtCount = useStore((s) => s.courtCount)
   const addPlayer = useStore((s) => s.addPlayer)
   const setCourtCount = useStore((s) => s.setCourtCount)
+  const resetSession = useStore((s) => s.resetSession)
+  const roundCount = useStore((s) => s.rounds.length)
   const [name, setName] = useState('')
 
   const submit = () => {
@@ -16,21 +18,26 @@ export function PlayersScreen() {
     setName('')
   }
 
-  const total = players.length
+  // Rotation math is driven by who is actually in the rotation; Away players
+  // stay on the roster but never count toward courts or sit-outs.
+  const inRotation = players.filter((p) => !p.away)
+  const total = inRotation.length
+  const awayCount = players.length - total
   const playingCount = Math.min(courtCount * 4, Math.floor(total / 4) * 4)
   const sitoutCount = total - playingCount
   const courtsUsed = playingCount / 4
+  const awayTail = awayCount > 0 ? ` · ${awayCount} away` : ''
 
   let courtSummary: string
   if (total < 4) {
-    courtSummary = 'Add at least 4 players to start a round'
+    courtSummary = `Add at least 4 players in rotation to start a round${awayTail}`
   } else if (courtsUsed < courtCount) {
     const tail = sitoutCount === 0 ? 'everyone plays' : `${sitoutCount} rotate out`
-    courtSummary = `${total} players fill ${courtsUsed} of ${courtCount} courts · ${tail}`
+    courtSummary = `${total} in rotation fill ${courtsUsed} of ${courtCount} courts · ${tail}${awayTail}`
   } else if (sitoutCount === 0) {
-    courtSummary = `${total} players · everyone plays every round`
+    courtSummary = `${total} in rotation · everyone plays every round${awayTail}`
   } else {
-    courtSummary = `${total} players · ${playingCount} play, ${sitoutCount} rotate out each round`
+    courtSummary = `${total} in rotation · ${playingCount} play, ${sitoutCount} rotate out each round${awayTail}`
   }
 
   return (
@@ -74,7 +81,12 @@ export function PlayersScreen() {
       </section>
 
       <section className="space-y-3">
-        <SectionLabel>Roster &middot; {players.length}</SectionLabel>
+        <SectionLabel>
+          Roster &middot; {players.length}
+          {awayCount > 0 && (
+            <span className="text-ink-faint"> &middot; {awayCount} away</span>
+          )}
+        </SectionLabel>
         <div className="flex gap-2">
           <TextInput
             data-testid="player-name-input"
@@ -108,6 +120,21 @@ export function PlayersScreen() {
           </ul>
         )}
       </section>
+
+      <section className="space-y-1.5 pb-2">
+        <Button
+          data-testid="reset-session"
+          variant="outline"
+          onClick={resetSession}
+          disabled={roundCount === 0}
+          className="w-full"
+        >
+          Clear session
+        </Button>
+        <p className="text-center text-xs text-ink-soft">
+          Clears all rounds and standings. Roster stays.
+        </p>
+      </section>
     </div>
   )
 }
@@ -118,6 +145,7 @@ function PlayerRow({ player, all }: { player: Player; all: Player[] }) {
   const setMode = useStore((s) => s.setMode)
   const setLockedPartner = useStore((s) => s.setLockedPartner)
   const togglePoolMember = useStore((s) => s.togglePoolMember)
+  const setPlayerAway = useStore((s) => s.setPlayerAway)
 
   const others = all.filter((o) => o.id !== player.id)
   const partnerName = player.partnerId
@@ -135,6 +163,7 @@ function PlayerRow({ player, all }: { player: Player; all: Player[] }) {
       data-mode={player.mode}
       data-partner={partnerName}
       data-pool={poolNames}
+      data-away={player.away}
       className="space-y-2.5 px-3 py-3"
     >
       <div className="flex items-center gap-2">
@@ -143,7 +172,10 @@ function PlayerRow({ player, all }: { player: Player; all: Player[] }) {
           aria-label="Player name"
           value={player.name}
           onChange={(e) => renamePlayer(player.id, e.target.value)}
-          className="min-w-0 flex-1 border-b border-transparent bg-transparent pb-0.5 text-base font-bold text-ink focus:border-ink focus:outline-none"
+          className={cn(
+            'min-w-0 flex-1 border-b border-transparent bg-transparent pb-0.5 text-base font-bold focus:border-ink focus:outline-none',
+            player.away ? 'text-ink-faint' : 'text-ink',
+          )}
         />
         <Select
           data-testid="player-mode"
@@ -165,6 +197,37 @@ function PlayerRow({ player, all }: { player: Player; all: Player[] }) {
           &#10005;
         </button>
       </div>
+
+      <button
+        data-testid="player-away-toggle"
+        aria-pressed={player.away}
+        aria-label={
+          player.away
+            ? `${player.name} is away — tap to bring back in`
+            : `${player.name} is in rotation — tap to set away`
+        }
+        onClick={() => setPlayerAway(player.id, !player.away)}
+        className={cn(
+          'spring-press flex min-h-11 w-full items-center justify-between gap-2 rounded-md border px-3',
+          'text-[11px] font-extrabold uppercase tracking-[0.12em]',
+          player.away
+            ? 'border-rule bg-sunk text-ink-soft'
+            : 'border-ink bg-ink text-paper',
+        )}
+      >
+        <span>{player.away ? 'Away — resting' : 'In rotation'}</span>
+        <span
+          aria-hidden="true"
+          className={cn(
+            'rounded px-2 py-0.5 text-[10px] tracking-[0.1em]',
+            player.away
+              ? 'bg-ink text-paper'
+              : 'border border-paper/40 text-paper',
+          )}
+        >
+          {player.away ? 'Bring in' : 'Set away'}
+        </span>
+      </button>
 
       {player.mode === 'locked' && (
         <div className="border-t border-rule pt-2.5">

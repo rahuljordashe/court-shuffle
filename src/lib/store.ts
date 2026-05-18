@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { ConstraintMode, Player, Round, TabKey } from './types'
+import type { ConstraintMode, Court, Player, Round, TabKey, Team } from './types'
 import { generateRound as runGenerator } from './generator'
 import { uid } from './utils'
 
@@ -14,6 +14,8 @@ interface SessionState {
   roundJustGenerated: boolean
   /** Transient: snapshot for undoing the most recent player removal. */
   removalUndo: { players: Player[]; removedName: string } | null
+  /** Transient: snapshot of rounds for undoing a session reset. */
+  sessionUndo: { rounds: Round[] } | null
 
   addPlayer: (name: string) => void
   renamePlayer: (id: string, name: string) => void
@@ -22,10 +24,15 @@ interface SessionState {
   setLockedPartner: (id: string, partnerId: string) => void
   togglePoolMember: (id: string, otherId: string) => void
   setCourtCount: (count: number) => void
+  setPlayerAway: (id: string, away: boolean) => void
   generateNextRound: () => void
+  rerollRound: () => void
+  swapPlayers: (idA: string, idB: string) => void
   setScore: (roundIndex: number, courtIndex: number, teamIndex: number, score: number | null) => void
   endRound: () => void
   resetSession: () => void
+  undoResetSession: () => void
+  clearSessionUndo: () => void
   setActiveTab: (tab: TabKey) => void
   consumeRoundReveal: () => void
   undoRemovePlayer: () => void
@@ -46,6 +53,7 @@ export const useStore = create<SessionState>()(
       activeTab: 'players',
       roundJustGenerated: false,
       removalUndo: null,
+      sessionUndo: null,
 
       addPlayer: (name) => {
         const trimmed = name.trim()
@@ -56,6 +64,7 @@ export const useStore = create<SessionState>()(
           mode: 'open',
           partnerId: null,
           poolIds: [],
+          away: false,
         }
         set((s) => ({ players: [...s.players, player] }))
       },
@@ -161,6 +170,12 @@ export const useStore = create<SessionState>()(
         set({ courtCount: clamped })
       },
 
+      setPlayerAway: (id, away) => {
+        set((s) => ({
+          players: s.players.map((p) => (p.id === id ? { ...p, away } : p)),
+        }))
+      },
+
       generateNextRound: () => {
         const { players, courtCount, rounds } = get()
         const last = rounds[rounds.length - 1]
@@ -168,7 +183,18 @@ export const useStore = create<SessionState>()(
           set({ generationError: 'Finish the current round before generating the next one.' })
           return
         }
-        const result = runGenerator(players, courtCount, rounds)
+        // Players marked Away stay on the roster but sit out generation.
+        const active = players.filter((p) => !p.away)
+        if (active.length < 4) {
+          set({
+            generationError:
+              players.length >= 4
+                ? 'Not enough players in the rotation. Bring someone back from Away.'
+                : 'Add at least 4 players to generate a round.',
+          })
+          return
+        }
+        const result = runGenerator(active, courtCount, rounds)
         if (!result.ok || !result.courts || !result.sitoutIds) {
           set({ generationError: result.reason ?? 'Could not generate a valid round.' })
           return
@@ -187,10 +213,68 @@ export const useStore = create<SessionState>()(
         })
       },
 
+      rerollRound: () => {
+        const { players, courtCount, rounds } = get()
+        const last = rounds[rounds.length - 1]
+        if (!last || last.locked) return
+        const active = players.filter((p) => !p.away)
+        if (active.length < 4) {
+          set({
+            generationError:
+              players.length >= 4
+                ? 'Not enough players in the rotation. Bring someone back from Away.'
+                : 'Add at least 4 players to generate a round.',
+          })
+          return
+        }
+        // Score the re-roll against history WITHOUT the round being replaced,
+        // so it genuinely re-shuffles instead of scoring against itself.
+        const priorRounds = rounds.slice(0, -1)
+        const result = runGenerator(active, courtCount, priorRounds)
+        if (!result.ok || !result.courts || !result.sitoutIds) {
+          set({ generationError: result.reason ?? 'Could not generate a valid round.' })
+          return
+        }
+        const round: Round = {
+          index: last.index,
+          courts: result.courts,
+          sitoutIds: result.sitoutIds,
+          locked: false,
+        }
+        set({
+          rounds: [...priorRounds, round],
+          generationError: null,
+          roundJustGenerated: true,
+        })
+      },
+
+      swapPlayers: (idA, idB) => {
+        if (idA === idB) return
+        set((s) => {
+          const last = s.rounds[s.rounds.length - 1]
+          if (!last || last.locked) return {}
+          const swap = (id: string) => (id === idA ? idB : id === idB ? idA : id)
+          const courts: Court[] = last.courts.map((c) => ({
+            teams: c.teams.map((t) => ({
+              ...t,
+              players: t.players.map(swap) as [string, string],
+            })) as [Team, Team],
+          }))
+          const sitoutIds = last.sitoutIds.map(swap)
+          return {
+            rounds: s.rounds.map((r) =>
+              r.index === last.index ? { ...r, courts, sitoutIds } : r,
+            ),
+          }
+        })
+      },
+
       setScore: (roundIndex, courtIndex, teamIndex, score) => {
         set((s) => ({
           rounds: s.rounds.map((r) => {
-            if (r.index !== roundIndex || r.locked) return r
+            // Locked rounds stay editable so a disputed score can be corrected
+            // from the round-history view; the leaderboard recomputes live.
+            if (r.index !== roundIndex) return r
             return {
               ...r,
               courts: r.courts.map((c, ci) => {
@@ -218,8 +302,24 @@ export const useStore = create<SessionState>()(
       },
 
       resetSession: () => {
-        set({ rounds: [], generationError: null })
+        set((s) => {
+          if (s.rounds.length === 0) return { generationError: null }
+          // Snapshot rounds so an accidental reset can be undone from the toast.
+          return {
+            rounds: [],
+            generationError: null,
+            activeTab: 'players',
+            sessionUndo: { rounds: s.rounds },
+          }
+        })
       },
+
+      undoResetSession: () =>
+        set((s) =>
+          s.sessionUndo ? { rounds: s.sessionUndo.rounds, sessionUndo: null } : {},
+        ),
+
+      clearSessionUndo: () => set({ sessionUndo: null }),
 
       setActiveTab: (tab) => set({ activeTab: tab }),
 
@@ -234,7 +334,15 @@ export const useStore = create<SessionState>()(
     }),
     {
       name: 'court-shuffle-v1',
-      version: 1,
+      version: 2,
+      // v2 added Player.away; backfill it for sessions persisted under v1.
+      migrate: (persisted, version) => {
+        const state = persisted as Partial<SessionState>
+        if (version < 2 && state.players) {
+          state.players = state.players.map((p) => ({ away: false, ...p }))
+        }
+        return state as SessionState
+      },
       partialize: (s) => ({
         players: s.players,
         courtCount: s.courtCount,

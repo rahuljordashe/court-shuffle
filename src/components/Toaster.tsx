@@ -3,34 +3,65 @@ import { useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 
 /**
- * Transient confirmations, courtside-sized. Today it carries one message: a
- * removed player can be restored for a few seconds. Removing a player also
- * frees their locked/pool links, so an accidental tap is worth catching.
+ * Transient confirmations, courtside-sized. Carries two reversible actions: a
+ * removed player can be restored, and a reset session's standings can be
+ * brought back. Both undo in a single tap, for a few seconds.
  *
  * The toast slides in like a card laid on the table, then clears itself after
  * five seconds (or the moment Undo is pressed).
  */
 export function Toaster() {
   const removalUndo = useStore((s) => s.removalUndo)
+  const sessionUndo = useStore((s) => s.sessionUndo)
   const undoRemovePlayer = useStore((s) => s.undoRemovePlayer)
   const clearRemovalUndo = useStore((s) => s.clearRemovalUndo)
+  const undoResetSession = useStore((s) => s.undoResetSession)
+  const clearSessionUndo = useStore((s) => s.clearSessionUndo)
 
   // Local mirror so the card can finish its exit after the store state clears.
-  const [shown, setShown] = useState<{ name: string } | null>(null)
+  const [shown, setShown] = useState<{
+    label: string
+    text: string
+    onUndo: () => void
+  } | null>(null)
   const [leaving, setLeaving] = useState(false)
 
   useEffect(() => {
-    if (removalUndo) {
-      setShown({ name: removalUndo.removedName })
+    // A removed player takes precedence over a reset session if both are live.
+    const active = removalUndo
+      ? {
+          label: 'Removed',
+          text: removalUndo.removedName,
+          onUndo: undoRemovePlayer,
+          onClear: clearRemovalUndo,
+        }
+      : sessionUndo
+        ? {
+            label: 'Cleared',
+            text: 'Session standings reset',
+            onUndo: undoResetSession,
+            onClear: clearSessionUndo,
+          }
+        : null
+
+    if (active) {
+      setShown({ label: active.label, text: active.text, onUndo: active.onUndo })
       setLeaving(false)
-      const t = setTimeout(clearRemovalUndo, 5000)
+      const t = setTimeout(active.onClear, 5000)
       return () => clearTimeout(t)
     }
     // Store cleared (undo or timeout): play the exit, then unmount.
     setLeaving(true)
     const t = setTimeout(() => setShown(null), 200)
     return () => clearTimeout(t)
-  }, [removalUndo, clearRemovalUndo])
+  }, [
+    removalUndo,
+    sessionUndo,
+    undoRemovePlayer,
+    clearRemovalUndo,
+    undoResetSession,
+    clearSessionUndo,
+  ])
 
   if (!shown) return null
 
@@ -44,14 +75,14 @@ export function Toaster() {
         )}
       >
         <span className="shrink-0 rounded-sm bg-signal px-1.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.12em] text-on-signal">
-          Removed
+          {shown.label}
         </span>
         <span className="min-w-0 flex-1 truncate text-sm font-bold text-paper">
-          {shown.name}
+          {shown.text}
         </span>
         <button
           data-testid="toast-undo"
-          onClick={() => undoRemovePlayer()}
+          onClick={() => shown.onUndo()}
           className="min-h-11 shrink-0 rounded-sm border border-paper/30 px-3.5 text-[11px] font-extrabold uppercase tracking-[0.1em] text-paper transition-colors duration-150 hover:bg-paper/10 active:bg-paper/15"
         >
           Undo
