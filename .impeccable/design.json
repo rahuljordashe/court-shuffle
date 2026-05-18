@@ -1,0 +1,197 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-05-18T00:00:00Z",
+  "title": "Design System: Court Shuffle",
+  "extensions": {
+    "colorMeta": {
+      "signal": {
+        "role": "primary",
+        "displayName": "Signal Vermilion",
+        "canonical": "oklch(0.535 0.205 34)",
+        "tonalRamp": [
+          "oklch(0.20 0.10 34)",
+          "oklch(0.30 0.15 34)",
+          "oklch(0.40 0.18 34)",
+          "oklch(0.50 0.20 34)",
+          "oklch(0.58 0.20 34)",
+          "oklch(0.68 0.16 34)",
+          "oklch(0.80 0.09 34)",
+          "oklch(0.93 0.035 34)"
+        ]
+      },
+      "signal-deep": {
+        "role": "primary",
+        "displayName": "Signal Vermilion Deep",
+        "canonical": "oklch(0.46 0.185 34)"
+      },
+      "signal-wash": {
+        "role": "primary",
+        "displayName": "Signal Wash",
+        "canonical": "oklch(0.955 0.035 46)"
+      },
+      "on-signal": {
+        "role": "primary",
+        "displayName": "On-Signal",
+        "canonical": "oklch(0.99 0.014 78)"
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "oklch(0.235 0.014 62)",
+        "tonalRamp": [
+          "oklch(0.20 0.012 70)",
+          "oklch(0.30 0.013 70)",
+          "oklch(0.40 0.014 70)",
+          "oklch(0.51 0.015 70)",
+          "oklch(0.66 0.014 70)",
+          "oklch(0.80 0.011 70)",
+          "oklch(0.91 0.008 70)",
+          "oklch(0.98 0.006 70)"
+        ]
+      },
+      "ink-soft": {
+        "role": "neutral",
+        "displayName": "Ink Soft",
+        "canonical": "oklch(0.505 0.016 62)"
+      },
+      "ink-faint": {
+        "role": "neutral",
+        "displayName": "Ink Faint",
+        "canonical": "oklch(0.66 0.014 62)"
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "Paper",
+        "canonical": "oklch(0.98 0.007 78)"
+      },
+      "raised": {
+        "role": "neutral",
+        "displayName": "Raised",
+        "canonical": "oklch(0.995 0.003 80)"
+      },
+      "sunk": {
+        "role": "neutral",
+        "displayName": "Sunk",
+        "canonical": "oklch(0.955 0.009 78)"
+      },
+      "rule": {
+        "role": "neutral",
+        "displayName": "Rule",
+        "canonical": "oklch(0.235 0.014 62 / 0.16)"
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "The round number on the Round screen. The single largest element." },
+      "headline": { "displayName": "Headline", "purpose": "Court-count digits in the selector." },
+      "title": { "displayName": "Title", "purpose": "Player names, team rosters, leaderboard names." },
+      "body": { "displayName": "Body", "purpose": "Helper text, error messages, generation hints." },
+      "label": { "displayName": "Label", "purpose": "Section labels, court tags, status, button and table-header text. Uppercase, tracked." }
+    },
+    "shadows": [],
+    "motion": [
+      { "name": "ease-standard", "value": "cubic-bezier(0.4, 0, 0.2, 1)", "purpose": "Default easing for all color-state transitions." },
+      { "name": "duration-state", "value": "150ms", "purpose": "Duration for hover/active/selected color changes. Fast enough to feel instant." },
+      { "name": "reduced-motion", "value": "transition/animation clamped to 0.01ms", "purpose": "Honors prefers-reduced-motion; no motion is essential to understanding state." }
+    ],
+    "breakpoints": [
+      { "name": "app-column", "value": "448px", "purpose": "The app renders as a single centered mobile column (max-width 28rem); it never becomes a multi-column desktop layout." }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button (Signal)",
+      "kind": "button",
+      "refersTo": "button-signal",
+      "description": "The single most important action on a screen: Generate, End Round. Vermilion fill.",
+      "html": "<button class=\"ds-btn-signal\">Generate next round <span aria-hidden=\"true\">&rarr;</span></button>",
+      "css": ".ds-btn-signal { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 0 16px; border-radius: 6px; background: oklch(0.535 0.205 34); color: oklch(0.99 0.014 78); border: 1px solid oklch(0.535 0.205 34); font-family: ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.09em; cursor: pointer; transition: background-color 150ms cubic-bezier(0.4,0,0.2,1), border-color 150ms cubic-bezier(0.4,0,0.2,1); } .ds-btn-signal:hover { background: oklch(0.46 0.185 34); border-color: oklch(0.46 0.185 34); } .ds-btn-signal:focus-visible { outline: 2px solid oklch(0.235 0.014 62); outline-offset: 2px; } .ds-btn-signal:disabled { opacity: 0.45; cursor: not-allowed; }"
+    },
+    {
+      "name": "Selection Button (Ink)",
+      "kind": "button",
+      "refersTo": "button-ink",
+      "description": "Marks a selected or current state: active court count, selected leaderboard sort. Solid ink fill.",
+      "html": "<button class=\"ds-btn-ink\">Win %</button>",
+      "css": ".ds-btn-ink { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 0 16px; border-radius: 6px; background: oklch(0.235 0.014 62); color: oklch(0.98 0.007 78); border: 1px solid oklch(0.235 0.014 62); font-family: ui-sans-serif, system-ui, sans-serif; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; cursor: pointer; transition: opacity 150ms cubic-bezier(0.4,0,0.2,1); } .ds-btn-ink:hover { opacity: 0.9; }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Secondary action and the disabled-look state of the primary action.",
+      "html": "<button class=\"ds-btn-outline\">Generate next round <span aria-hidden=\"true\">&rarr;</span></button>",
+      "css": ".ds-btn-outline { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 0 16px; border-radius: 6px; background: oklch(0.995 0.003 80); color: oklch(0.235 0.014 62); border: 1px solid oklch(0.235 0.014 62 / 0.16); font-family: ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.09em; cursor: pointer; transition: border-color 150ms cubic-bezier(0.4,0,0.2,1); } .ds-btn-outline:hover { border-color: oklch(0.235 0.014 62); }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Standard text field, e.g. the add-player input.",
+      "html": "<input class=\"ds-input\" type=\"text\" placeholder=\"Player name\" />",
+      "css": ".ds-input { box-sizing: border-box; min-height: 48px; padding: 0 12px; border-radius: 6px; background: oklch(0.995 0.003 80); color: oklch(0.235 0.014 62); border: 1px solid oklch(0.235 0.014 62 / 0.16); font-family: ui-sans-serif, system-ui, sans-serif; font-size: 1rem; } .ds-input::placeholder { color: oklch(0.66 0.014 62); } .ds-input:focus { outline: none; border-color: oklch(0.235 0.014 62); }"
+    },
+    {
+      "name": "Pool Chip",
+      "kind": "chip",
+      "refersTo": "chip-pool",
+      "description": "Toggle chip for choosing pool partners. Unselected is bordered paper; selected flips to solid ink.",
+      "html": "<button class=\"ds-chip-pool\">Jamie</button> <button class=\"ds-chip-pool\" aria-pressed=\"true\">Ko</button>",
+      "css": ".ds-chip-pool { min-height: 44px; padding: 0 10px; border-radius: 4px; background: oklch(0.98 0.007 78); color: oklch(0.505 0.016 62); border: 1px solid oklch(0.235 0.014 62 / 0.16); font-family: ui-sans-serif, system-ui, sans-serif; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; cursor: pointer; transition: background-color 150ms cubic-bezier(0.4,0,0.2,1), border-color 150ms cubic-bezier(0.4,0,0.2,1), color 150ms cubic-bezier(0.4,0,0.2,1); } .ds-chip-pool:hover { border-color: oklch(0.235 0.014 62); } .ds-chip-pool[aria-pressed=\"true\"] { background: oklch(0.235 0.014 62); color: oklch(0.98 0.007 78); border-color: oklch(0.235 0.014 62); }"
+    },
+    {
+      "name": "Court Block",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "Signature component. A hairline-bordered block with a ruled court tag, two team rows, dotted leader lines, and a winner row.",
+      "html": "<div class=\"ds-court\"><div class=\"ds-court-tag\">Court 1</div><div class=\"ds-team ds-team--won\"><span class=\"ds-flag\">Won</span><span class=\"ds-names\">Alex &amp; Brennan</span><span class=\"ds-leader\"></span><span class=\"ds-score ds-score--won\">11</span></div><div class=\"ds-team\"><span class=\"ds-flag\"></span><span class=\"ds-names\">Jamie &amp; Ko</span><span class=\"ds-leader\"></span><span class=\"ds-score\">7</span></div></div>",
+      "css": ".ds-court { border: 1px solid oklch(0.235 0.014 62 / 0.16); border-radius: 6px; background: oklch(0.995 0.003 80); overflow: hidden; font-family: ui-sans-serif, system-ui, sans-serif; } .ds-court-tag { padding: 8px 12px; border-bottom: 1px solid oklch(0.235 0.014 62 / 0.16); font-size: 0.625rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.18em; color: oklch(0.505 0.016 62); } .ds-team { display: flex; align-items: center; gap: 10px; padding: 12px; } .ds-team + .ds-team { border-top: 1px solid oklch(0.235 0.014 62 / 0.16); } .ds-team--won { background: oklch(0.955 0.035 46); } .ds-flag { width: 34px; font-size: 0.5625rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: oklch(0.46 0.185 34); } .ds-names { font-size: 0.9375rem; font-weight: 700; color: oklch(0.235 0.014 62); white-space: nowrap; } .ds-leader { flex: 1; min-width: 10px; border-bottom: 1px dotted oklch(0.66 0.014 62); } .ds-score { width: 56px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 4px; border: 1px solid oklch(0.235 0.014 62 / 0.16); background: oklch(0.98 0.007 78); color: oklch(0.235 0.014 62); font-size: 1.125rem; font-weight: 800; font-variant-numeric: tabular-nums; } .ds-score--won { background: oklch(0.535 0.205 34); border-color: oklch(0.535 0.205 34); color: oklch(0.99 0.014 78); }"
+    },
+    {
+      "name": "Bottom Tab Bar",
+      "kind": "nav",
+      "refersTo": null,
+      "description": "Fixed three-tab navigation. Active tab carries a 3px vermilion bar on its top edge.",
+      "html": "<nav class=\"ds-tabs\"><button class=\"ds-tab\"><span class=\"ds-tab-bar\"></span><span class=\"ds-tab-label\">Players</span></button><button class=\"ds-tab ds-tab--on\"><span class=\"ds-tab-bar\"></span><span class=\"ds-tab-label\">Round</span></button><button class=\"ds-tab\"><span class=\"ds-tab-bar\"></span><span class=\"ds-tab-label\">Leaders</span></button></nav>",
+      "css": ".ds-tabs { display: flex; border-top: 2px solid oklch(0.235 0.014 62); background: oklch(0.98 0.007 78); font-family: ui-sans-serif, system-ui, sans-serif; } .ds-tab { flex: 1; display: flex; flex-direction: column; align-items: center; background: none; border: none; cursor: pointer; padding: 0; } .ds-tab-bar { width: 100%; height: 3px; background: transparent; } .ds-tab--on .ds-tab-bar { background: oklch(0.535 0.205 34); } .ds-tab-label { padding: 14px 0; font-size: 0.6875rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.13em; color: oklch(0.66 0.014 62); } .ds-tab--on .ds-tab-label { color: oklch(0.235 0.014 62); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Departure Board",
+    "overview": "Court Shuffle is read in three-second glances: courtside, one-handed, in direct sunlight, between games. Its visual system is built like an airport departure board. A flat, high-contrast information surface where every element earns its place by being instantly legible, structure is drawn with rules rather than boxes, and nothing competes for attention except the one thing you need to act on next. The interface is a sign, not a screen. The system commits to a warm light surface (never a dark theme: a dark phone loses to outdoor glare) and a single vermilion signal that does the work of three states at once: the primary action, live status, and the winning team. Everything else is ink on paper, divided by hairline and structural rules. Hierarchy comes from weight, scale, case, and tracking, not from color, shadow, or decoration.",
+    "keyCharacteristics": [
+      "Light, warm, sunlight-grade contrast. Tinted neutrals, never pure black or white.",
+      "One vermilion signal accent. Rare by doctrine.",
+      "Structure drawn with rules: 1px hairlines and 2px ink dividers.",
+      "Uppercase, tracked labels as the wayfinding layer.",
+      "Flat. Depth is tonal layering, never shadow.",
+      "Tabular numerals everywhere a number appears."
+    ],
+    "rules": [
+      { "name": "The One Signal Rule", "body": "Vermilion appears on no more than ~10% of any screen, and only ever on an action, a live-status marker, or a winner. It is never used to decorate, to tint a panel, or to color a heading. Its rarity is what makes it read as a signal.", "section": "colors" },
+      { "name": "The Tinted Neutral Rule", "body": "There is no #000 and no #fff anywhere. Every neutral is tinted warm (hue 62 to 80). Pure black or pure white is a defect.", "section": "colors" },
+      { "name": "The Caps Label Rule", "body": "Every structural label (section headers, court tags, status, button text, table headers) is uppercase, weight 800, with letter tracking of 0.10em to 0.18em. Sentence-case is for content, never for structure.", "section": "typography" },
+      { "name": "The Tabular Number Rule", "body": "Every numeral the user might scan or compare uses tabular-nums. Numbers must align in a column and never reflow as they change.", "section": "typography" },
+      { "name": "The Rule, Not The Shadow Rule", "body": "Separation and grouping are drawn with lines, never with shadow or blur. Two rule weights exist and only two: the 1px hairline for dividing rows and quiet borders, and the 2px ink line for structural divisions. Never invent a third.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do keep the surface light and warm. Sunlight legibility is the use case.",
+      "Do reserve Signal Vermilion for one action, live status, and the winner. Hold it under ~10% of any screen.",
+      "Do draw structure with the two rule weights: 1px hairline, 2px ink.",
+      "Do set every structural label in uppercase, weight 800, wide tracking.",
+      "Do use tabular-nums on every score, count, percentage, and differential.",
+      "Do size every control for one-handed touch: 48px minimum, 56px for hero actions, 44px for chips.",
+      "Do convey winner, team, and status with text or shape, never color alone."
+    ],
+    "donts": [
+      "Don't ship a dark theme or dark scoreboard panels. A dark phone loses to outdoor glare.",
+      "Don't build a generic SaaS dashboard: no uniform card grids, no gradient hero-metric tiles, no indistinct corporate blue.",
+      "Don't make it a gamified, childish app: no mascots, no confetti, no badge spam, no bouncy oversized everything.",
+      "Don't let it become dated enterprise sports software: no dense gray tables, no cramped forms.",
+      "Don't reach for a trendy neon dark UI: no glow, no glassmorphism.",
+      "Don't add drop shadows. Depth is tonal layering and rules only.",
+      "Don't use a colored side-stripe (border-left/border-right > 1px) as an accent on any block.",
+      "Don't use gradient text, background-clip: text, or pure #000 / #fff.",
+      "Don't introduce a second accent color. The system has one voice."
+    ]
+  }
+}

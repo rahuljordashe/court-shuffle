@@ -1,0 +1,483 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Court Shuffle — Direction Explorations</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Spectral:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root { font-family: 'Inter', system-ui, sans-serif; }
+  body {
+    background: oklch(0.93 0.006 260);
+    color: oklch(0.28 0.02 260);
+    padding: 40px 32px 64px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .page-head { max-width: 1320px; margin: 0 auto 36px; }
+  .page-head h1 { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; }
+  .page-head p { font-size: 14px; color: oklch(0.5 0.02 260); margin-top: 6px; max-width: 60ch; }
+  .row { display: flex; gap: 36px; justify-content: center; flex-wrap: wrap; max-width: 1320px; margin: 0 auto; }
+  .col { width: 384px; }
+  .col > .label { display: flex; align-items: baseline; gap: 8px; margin-bottom: 14px; }
+  .col > .label b { font-size: 15px; font-weight: 800; letter-spacing: -0.01em; }
+  .col > .label span { font-size: 12px; color: oklch(0.55 0.02 260); }
+  .phone {
+    width: 384px; height: 808px; border-radius: 44px; overflow: hidden;
+    box-shadow: 0 2px 4px oklch(0 0 0 / 0.08), 0 24px 48px -16px oklch(0 0 0 / 0.32);
+    border: 1px solid oklch(0.82 0.01 260);
+  }
+  .app { height: 100%; display: flex; flex-direction: column; }
+  .screen { flex: 1; overflow-y: auto; }
+  .screen::-webkit-scrollbar { width: 0; }
+
+  /* ============ DIRECTION 1 — OPERATIONAL SIGNAGE ============ */
+  .signage {
+    --bg: oklch(0.985 0.004 70);
+    --panel: oklch(1 0 0);
+    --ink: oklch(0.22 0.013 65);
+    --soft: oklch(0.5 0.012 65);
+    --rule: oklch(0.22 0.013 65 / 0.18);
+    --signal: oklch(0.605 0.215 33);
+    --on-signal: oklch(0.99 0.01 70);
+    background: var(--bg); color: var(--ink);
+  }
+  .signage .appbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 22px; border-bottom: 2px solid var(--ink);
+  }
+  .signage .wordmark { font-size: 16px; font-weight: 800; letter-spacing: 0.14em; }
+  .signage .wordmark s { color: var(--signal); text-decoration: none; }
+  .signage .crumb {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.12em; color: var(--soft);
+  }
+  .signage .screen { padding: 4px 22px 22px; }
+  .signage .seclabel {
+    font-size: 10px; font-weight: 800; letter-spacing: 0.16em; color: var(--soft);
+    padding: 22px 0 9px;
+  }
+  .signage .genbar {
+    border: 1.5px dashed var(--rule); border-radius: 4px;
+    padding: 13px 15px; display: flex; align-items: center; gap: 11px;
+    color: var(--soft); font-size: 12.5px; font-weight: 600;
+  }
+  .signage .genbar i { font-style: normal; font-size: 15px; }
+  .signage .roundhead {
+    display: flex; align-items: baseline; justify-content: space-between;
+    border-bottom: 2px solid var(--ink); padding-bottom: 8px; margin-top: 4px;
+  }
+  .signage .roundhead h2 { font-size: 30px; font-weight: 800; letter-spacing: -0.02em; }
+  .signage .roundhead .live {
+    font-size: 10px; font-weight: 800; letter-spacing: 0.14em;
+    color: var(--signal); display: flex; align-items: center; gap: 6px;
+  }
+  .signage .roundhead .live::before {
+    content: ''; width: 7px; height: 7px; background: var(--signal); border-radius: 50%;
+  }
+  .signage .court { padding: 16px 0; border-bottom: 1px solid var(--rule); }
+  .signage .court-tag {
+    font-size: 10px; font-weight: 800; letter-spacing: 0.16em;
+    margin-bottom: 11px; display: inline-block;
+    border: 1.5px solid var(--ink); padding: 3px 8px; border-radius: 3px;
+  }
+  .signage .team {
+    display: flex; align-items: center; gap: 10px; padding: 7px 0;
+  }
+  .signage .team .names { font-size: 15.5px; font-weight: 700; white-space: nowrap; }
+  .signage .team .lead {
+    flex: 1; border-bottom: 1.5px dotted var(--rule); transform: translateY(-3px);
+  }
+  .signage .team .score {
+    font-size: 19px; font-weight: 800; font-variant-numeric: tabular-nums;
+    min-width: 34px; text-align: center;
+    border: 1.5px solid var(--rule); border-radius: 4px; padding: 3px 0; color: var(--soft);
+  }
+  .signage .team.won .names { color: var(--ink); }
+  .signage .team.won .score {
+    background: var(--signal); color: var(--on-signal); border-color: var(--signal);
+  }
+  .signage .team .flag {
+    font-size: 9px; font-weight: 800; letter-spacing: 0.1em;
+    color: var(--signal); width: 26px;
+  }
+  .signage .sitouts {
+    margin-top: 16px; font-size: 12px; font-weight: 600; color: var(--soft);
+    display: flex; gap: 8px; align-items: center;
+  }
+  .signage .sitouts b {
+    font-size: 10px; font-weight: 800; letter-spacing: 0.13em; color: var(--ink);
+  }
+  .signage .sitouts em { font-style: normal; color: var(--ink); font-weight: 700; }
+  .signage .endbtn {
+    margin-top: 22px; width: 100%; background: var(--signal); color: var(--on-signal);
+    border: none; height: 56px; border-radius: 5px;
+    font-size: 14px; font-weight: 800; letter-spacing: 0.1em;
+    display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer;
+  }
+  .signage .tabs { display: flex; border-top: 2px solid var(--ink); background: var(--panel); }
+  .signage .tabs button {
+    flex: 1; background: none; border: none; padding: 13px 0 16px; cursor: pointer;
+    font-size: 10px; font-weight: 800; letter-spacing: 0.12em; color: var(--soft);
+    display: flex; flex-direction: column; align-items: center; gap: 5px;
+  }
+  .signage .tabs button.on { color: var(--ink); }
+  .signage .tabs button.on::before {
+    content: ''; width: 22px; height: 3px; background: var(--signal);
+    margin-bottom: 2px;
+  }
+  .signage .tabs button.off::before { content: ''; height: 5px; }
+
+  /* ============ DIRECTION 2 — SCOREBOARD ATHLETIC ============ */
+  .scoreboard {
+    --bg: oklch(0.975 0.006 250);
+    --ink: oklch(0.21 0.025 260);
+    --soft: oklch(0.52 0.03 260);
+    --bold: oklch(0.47 0.155 256);
+    --bold-deep: oklch(0.38 0.13 258);
+    --on-bold: oklch(0.99 0.01 250);
+    --line: oklch(0.21 0.025 260 / 0.1);
+    background: var(--bg); color: var(--ink);
+  }
+  .scoreboard .appbar {
+    background: var(--ink); color: var(--on-bold);
+    padding: 17px 20px; display: flex; align-items: center; justify-content: space-between;
+  }
+  .scoreboard .wordmark { font-size: 17px; font-weight: 900; letter-spacing: -0.02em; }
+  .scoreboard .wordmark s { color: oklch(0.72 0.14 256); text-decoration: none; }
+  .scoreboard .crumb { font-size: 11px; font-weight: 700; color: oklch(0.72 0.03 260); }
+  .scoreboard .screen { padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+  .scoreboard .genbtn {
+    width: 100%; height: 52px; border-radius: 14px; cursor: pointer;
+    background: oklch(0.93 0.02 256); color: var(--soft); border: 1.5px solid var(--line);
+    font-size: 14px; font-weight: 800; display: flex; align-items: center;
+    justify-content: center; gap: 9px;
+  }
+  .scoreboard .roundhead { display: flex; align-items: center; justify-content: space-between; padding: 2px; }
+  .scoreboard .roundhead h2 {
+    font-size: 15px; font-weight: 900; letter-spacing: 0.04em; text-transform: uppercase;
+  }
+  .scoreboard .roundhead h2 b { color: var(--bold); }
+  .scoreboard .roundhead .live {
+    font-size: 11px; font-weight: 800; color: var(--on-bold);
+    background: var(--bold); padding: 4px 10px; border-radius: 999px;
+    text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  .scoreboard .court { border-radius: 18px; overflow: hidden; border: 1.5px solid var(--line); }
+  .scoreboard .court-tag {
+    background: var(--bold); color: var(--on-bold);
+    font-size: 11px; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase;
+    padding: 8px 14px;
+  }
+  .scoreboard .team {
+    display: flex; align-items: center; gap: 12px; padding: 14px;
+    background: oklch(1 0 0);
+  }
+  .scoreboard .team + .team { border-top: 1.5px solid var(--line); }
+  .scoreboard .team .names {
+    flex: 1; font-size: 15px; font-weight: 700; line-height: 1.25;
+  }
+  .scoreboard .team .names span { display: block; }
+  .scoreboard .team .score {
+    font-size: 46px; font-weight: 900; font-variant-numeric: tabular-nums;
+    line-height: 0.9; letter-spacing: -0.04em; color: oklch(0.78 0.02 260);
+  }
+  .scoreboard .team.won { background: oklch(0.96 0.04 256); }
+  .scoreboard .team.won .score { color: var(--bold); }
+  .scoreboard .team.won .names::after {
+    content: 'WINNER'; display: block; font-size: 9px; font-weight: 900;
+    letter-spacing: 0.12em; color: var(--bold); margin-top: 4px;
+  }
+  .scoreboard .sitouts {
+    background: var(--ink); color: oklch(0.82 0.02 260); border-radius: 14px;
+    padding: 12px 15px; font-size: 12px; font-weight: 600;
+  }
+  .scoreboard .sitouts b { color: var(--on-bold); font-weight: 800; }
+  .scoreboard .endbtn {
+    width: 100%; height: 54px; border-radius: 14px; cursor: pointer; margin-top: 2px;
+    background: var(--bold); color: var(--on-bold); border: none;
+    font-size: 15px; font-weight: 800; box-shadow: 0 4px 0 var(--bold-deep);
+  }
+  .scoreboard .tabs {
+    display: flex; background: oklch(1 0 0); border-top: 1.5px solid var(--line);
+  }
+  .scoreboard .tabs button {
+    flex: 1; background: none; border: none; padding: 11px 0 15px; cursor: pointer;
+    font-size: 11px; font-weight: 800; color: var(--soft);
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+  }
+  .scoreboard .tabs button .dot { font-size: 17px; }
+  .scoreboard .tabs button.on { color: var(--bold); }
+
+  /* ============ DIRECTION 3 — PRINT SCORECARD ============ */
+  .scorecard {
+    --bg: oklch(0.965 0.014 86);
+    --ink: oklch(0.26 0.018 60);
+    --soft: oklch(0.5 0.022 62);
+    --rule: oklch(0.26 0.018 60 / 0.32);
+    --hair: oklch(0.26 0.018 60 / 0.16);
+    --red: oklch(0.515 0.18 28);
+    background: var(--bg); color: var(--ink);
+  }
+  .scorecard .appbar {
+    text-align: center; padding: 18px 20px 14px;
+    border-bottom: 3px double var(--rule);
+  }
+  .scorecard .wordmark {
+    font-family: 'Spectral', Georgia, serif; font-size: 21px; font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+  .scorecard .appbar .sub {
+    font-size: 9.5px; font-weight: 600; letter-spacing: 0.22em;
+    text-transform: uppercase; color: var(--soft); margin-top: 3px;
+  }
+  .scorecard .screen { padding: 18px 20px 20px; }
+  .scorecard .genline {
+    display: flex; align-items: center; gap: 10px; font-size: 12px;
+    color: var(--soft); font-style: italic;
+    font-family: 'Spectral', Georgia, serif;
+    padding-bottom: 14px; border-bottom: 1px solid var(--hair);
+  }
+  .scorecard .roundhead {
+    display: flex; align-items: baseline; justify-content: space-between;
+    padding: 16px 0 6px;
+  }
+  .scorecard .roundhead h2 {
+    font-family: 'Spectral', Georgia, serif; font-size: 26px; font-weight: 600;
+  }
+  .scorecard .roundhead .live {
+    font-size: 10px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--red);
+  }
+  .scorecard .court { margin-top: 14px; }
+  .scorecard .court-tag {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--soft); padding-bottom: 5px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .scorecard .court-tag::after {
+    content: ''; flex: 1; border-bottom: 1px solid var(--rule);
+  }
+  .scorecard .team {
+    display: flex; align-items: center; gap: 12px;
+    padding: 9px 2px; border-bottom: 1px solid var(--hair);
+  }
+  .scorecard .team .names {
+    flex: 1; font-size: 15.5px; font-weight: 500;
+    font-family: 'Spectral', Georgia, serif;
+  }
+  .scorecard .team .score {
+    font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums lining-nums;
+    width: 40px; text-align: center; padding: 4px 0;
+    border: 1px solid var(--rule); border-radius: 2px; color: var(--soft);
+    background: oklch(0.99 0.006 86);
+  }
+  .scorecard .team .mark { width: 16px; text-align: center; color: var(--red); font-weight: 700; }
+  .scorecard .team.won .names { font-weight: 600; }
+  .scorecard .team.won .score { color: var(--ink); border-color: var(--red); border-width: 1.5px; }
+  .scorecard .sitouts {
+    margin-top: 16px; padding-top: 12px; border-top: 3px double var(--rule);
+    font-size: 13px; font-family: 'Spectral', Georgia, serif;
+  }
+  .scorecard .sitouts b {
+    font-family: 'Inter', sans-serif; font-size: 9.5px; font-weight: 700;
+    letter-spacing: 0.18em; text-transform: uppercase; color: var(--soft);
+    display: block; margin-bottom: 3px;
+  }
+  .scorecard .sitouts em { font-style: italic; }
+  .scorecard .endbtn {
+    margin-top: 20px; width: 100%; height: 54px; cursor: pointer;
+    background: var(--ink); color: var(--bg); border: none; border-radius: 3px;
+    font-family: 'Spectral', Georgia, serif; font-size: 16px; font-weight: 600;
+    display: flex; align-items: center; justify-content: center; gap: 9px;
+  }
+  .scorecard .tabs {
+    display: flex; border-top: 3px double var(--rule); background: oklch(0.985 0.01 86);
+  }
+  .scorecard .tabs button {
+    flex: 1; background: none; border: none; padding: 12px 0 16px; cursor: pointer;
+    font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--soft);
+  }
+  .scorecard .tabs button.on { color: var(--red); }
+  .scorecard .tabs button.on { text-decoration: underline; text-underline-offset: 5px;
+    text-decoration-thickness: 1.5px; }
+</style>
+</head>
+<body>
+
+<div class="page-head">
+  <h1>Court Shuffle — Direction Explorations</h1>
+  <p>Three visual directions for the redesign, all light theme, shown on the Round screen (the heartbeat). Same session: Round 3 in progress, 2 courts, scores entered, 2 players sitting out. Pick the lane that feels right.</p>
+</div>
+
+<div class="row">
+
+  <!-- ===== DIRECTION 1: OPERATIONAL SIGNAGE ===== -->
+  <div class="col">
+    <div class="label"><b>1 · Operational signage</b><span>wayfinding clarity · vermilion signal</span></div>
+    <div class="phone signage">
+      <div class="app">
+        <div class="appbar">
+          <div class="wordmark">COURT<s>/</s>SHUFFLE</div>
+          <div class="crumb">10 PLAYERS</div>
+        </div>
+        <div class="screen">
+          <div class="seclabel">MATCH GENERATOR</div>
+          <div class="genbar"><i>↳</i> End round 3 to generate the next one</div>
+          <div class="seclabel">CURRENT ROUND</div>
+          <div class="roundhead">
+            <h2>Round 3</h2>
+            <div class="live">IN PROGRESS</div>
+          </div>
+          <div class="court">
+            <span class="court-tag">COURT 1</span>
+            <div class="team won">
+              <span class="flag">WON</span>
+              <span class="names">Alex &amp; Brennan</span>
+              <span class="lead"></span>
+              <span class="score">11</span>
+            </div>
+            <div class="team">
+              <span class="flag"></span>
+              <span class="names">Jamie &amp; Ko</span>
+              <span class="lead"></span>
+              <span class="score">7</span>
+            </div>
+          </div>
+          <div class="court">
+            <span class="court-tag">COURT 2</span>
+            <div class="team">
+              <span class="flag"></span>
+              <span class="names">Sam &amp; Priya</span>
+              <span class="lead"></span>
+              <span class="score">9</span>
+            </div>
+            <div class="team won">
+              <span class="flag">WON</span>
+              <span class="names">Devin &amp; Mara</span>
+              <span class="lead"></span>
+              <span class="score">11</span>
+            </div>
+          </div>
+          <div class="sitouts"><b>SITTING OUT</b> <em>Tito, Wren</em></div>
+          <button class="endbtn">END ROUND <span>→</span></button>
+        </div>
+        <div class="tabs">
+          <button class="off">PLAYERS</button>
+          <button class="on">ROUND</button>
+          <button class="off">LEADERS</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== DIRECTION 2: SCOREBOARD ATHLETIC ===== -->
+  <div class="col">
+    <div class="label"><b>2 · Scoreboard athletic</b><span>big numerals · committed cobalt</span></div>
+    <div class="phone scoreboard">
+      <div class="app">
+        <div class="appbar">
+          <div class="wordmark">Court<s>·</s>Shuffle</div>
+          <div class="crumb">10 players</div>
+        </div>
+        <div class="screen">
+          <button class="genbtn">⟳ &nbsp;Generate Next Round</button>
+          <div class="roundhead">
+            <h2>Round <b>3</b></h2>
+            <div class="live">In progress</div>
+          </div>
+          <div class="court">
+            <div class="court-tag">Court 1</div>
+            <div class="team won">
+              <div class="names"><span>Alex</span><span>Brennan</span></div>
+              <div class="score">11</div>
+            </div>
+            <div class="team">
+              <div class="names"><span>Jamie</span><span>Ko</span></div>
+              <div class="score">7</div>
+            </div>
+          </div>
+          <div class="court">
+            <div class="court-tag">Court 2</div>
+            <div class="team">
+              <div class="names"><span>Sam</span><span>Priya</span></div>
+              <div class="score">9</div>
+            </div>
+            <div class="team won">
+              <div class="names"><span>Devin</span><span>Mara</span></div>
+              <div class="score">11</div>
+            </div>
+          </div>
+          <div class="sitouts">Sitting out &nbsp;·&nbsp; <b>Tito, Wren</b></div>
+          <button class="endbtn">End Round</button>
+        </div>
+        <div class="tabs">
+          <button class="off"><span class="dot">○</span>Players</button>
+          <button class="on"><span class="dot">●</span>Round</button>
+          <button class="off"><span class="dot">○</span>Leaders</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== DIRECTION 3: PRINT SCORECARD ===== -->
+  <div class="col">
+    <div class="label"><b>3 · Print scorecard</b><span>bracket sheet · warm paper · ink-red</span></div>
+    <div class="phone scorecard">
+      <div class="app">
+        <div class="appbar">
+          <div class="wordmark">Court Shuffle</div>
+          <div class="sub">Session Scorecard</div>
+        </div>
+        <div class="screen">
+          <div class="genline">✑ &nbsp;End round 3 to draw the next one.</div>
+          <div class="roundhead">
+            <h2>Round 3</h2>
+            <div class="live">In play</div>
+          </div>
+          <div class="court">
+            <div class="court-tag">Court 1</div>
+            <div class="team won">
+              <span class="mark">✓</span>
+              <span class="names">Alex / Brennan</span>
+              <span class="score">11</span>
+            </div>
+            <div class="team">
+              <span class="mark"></span>
+              <span class="names">Jamie / Ko</span>
+              <span class="score">7</span>
+            </div>
+          </div>
+          <div class="court">
+            <div class="court-tag">Court 2</div>
+            <div class="team">
+              <span class="mark"></span>
+              <span class="names">Sam / Priya</span>
+              <span class="score">9</span>
+            </div>
+            <div class="team won">
+              <span class="mark">✓</span>
+              <span class="names">Devin / Mara</span>
+              <span class="score">11</span>
+            </div>
+          </div>
+          <div class="sitouts">
+            <b>Sitting out this round</b>
+            <em>Tito and Wren</em>
+          </div>
+          <button class="endbtn">End Round &nbsp;→</button>
+        </div>
+        <div class="tabs">
+          <button class="off">Players</button>
+          <button class="on">Round</button>
+          <button class="off">Leaders</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

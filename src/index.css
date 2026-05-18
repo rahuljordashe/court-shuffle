@@ -1,0 +1,53 @@
+@import "tailwindcss";
+
+/* Operational-signage palette: warm light surface, one vermilion signal. */
+@theme {
+  --color-paper: oklch(0.98 0.007 78);
+  --color-raised: oklch(0.995 0.003 80);
+  --color-sunk: oklch(0.955 0.009 78);
+  --color-ink: oklch(0.235 0.014 62);
+  --color-ink-soft: oklch(0.505 0.016 62);
+  --color-ink-faint: oklch(0.66 0.014 62);
+  --color-rule: oklch(0.235 0.014 62 / 0.16);
+  --color-signal: oklch(0.535 0.205 34);
+  --color-signal-deep: oklch(0.46 0.185 34);
+  --color-signal-wash: oklch(0.955 0.035 46);
+  --color-on-signal: oklch(0.99 0.014 78);
+}
+
+html {
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+#root {
+  min-height: 100dvh;
+}
+
+/* A clean numeric chip: no native spinners. */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
