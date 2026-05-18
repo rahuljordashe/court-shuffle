@@ -43,11 +43,115 @@ input[type="number"] {
   -moz-appearance: textfield;
 }
 
+/* ------------------------------------------------------------------------
+   Motion — "Deal". Matchups arrive like cards off the deck: courts and
+   standings deal in with a slight tilt that settles flat, the winner's wash
+   wipes across the row, the court count rolls, toasts slide in like a card
+   laid on the table. Decelerating easings only; nothing overshoots.
+   The prefers-reduced-motion block below collapses every one of these to an
+   instant state change.
+   ------------------------------------------------------------------------ */
+:root {
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+/* Court blocks and leaderboard rows: dealt down from the deck. */
+@keyframes deal-in {
+  from {
+    opacity: 0;
+    transform: translateY(-18px) rotate(-2.5deg);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) rotate(0);
+  }
+}
+.deal-in {
+  animation: deal-in 300ms var(--ease-out-quint) both;
+}
+
+/* Winner: the signal wash wipes across the row, left to right. */
+.win-wash {
+  position: absolute;
+  inset: 0;
+  background-color: var(--color-signal-wash);
+  transform-origin: left;
+  transform: scaleX(0);
+  transition: transform 360ms var(--ease-out-quint);
+}
+[data-winner='true'] .win-wash {
+  transform: scaleX(1);
+}
+
+/* Court count: the digit rolls — old slides out, new rolls in behind it. */
+@keyframes roll-up-in {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+@keyframes roll-up-out {
+  from { transform: translateY(0); }
+  to { transform: translateY(-100%); }
+}
+@keyframes roll-down-in {
+  from { transform: translateY(-100%); }
+  to { transform: translateY(0); }
+}
+@keyframes roll-down-out {
+  from { transform: translateY(0); }
+  to { transform: translateY(100%); }
+}
+.roll-up-in { animation: roll-up-in 240ms var(--ease-out-quint) both; }
+.roll-up-out { animation: roll-up-out 240ms var(--ease-out-quint) both; }
+.roll-down-in { animation: roll-down-in 240ms var(--ease-out-quint) both; }
+.roll-down-out { animation: roll-down-out 240ms var(--ease-out-quint) both; }
+
+/* Toast: slides up and settles flat, like a card laid on the table. */
+@keyframes toast-deal {
+  from {
+    opacity: 0;
+    transform: translateY(40px) rotate(3deg);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) rotate(0);
+  }
+}
+@keyframes toast-clear {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+.toast-deal { animation: toast-deal 300ms var(--ease-out-quint) both; }
+.toast-clear { animation: toast-clear 160ms var(--ease-out-quart) both; }
+
+/* Live-status dot for an in-progress round. */
+@keyframes live-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+.live-dot {
+  animation: live-pulse 2.4s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
+    animation-delay: 0s !important;
+    animation-iteration-count: 1 !important;
   }
 }

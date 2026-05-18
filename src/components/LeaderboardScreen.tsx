@@ -12,6 +12,15 @@ export function LeaderboardScreen() {
   const players = useStore((s) => s.players)
   const rounds = useStore((s) => s.rounds)
   const [sortKey, setSortKey] = useState<SortKey>('winPct')
+  // Bumped on each sort change so the rows re-key and deal back in. Stays 0 on
+  // first paint and tab re-entry, so the standings never animate unprompted.
+  const [resortNonce, setResortNonce] = useState(0)
+
+  const changeSort = (key: SortKey) => {
+    if (key === sortKey) return
+    setSortKey(key)
+    setResortNonce((n) => n + 1)
+  }
 
   const stats = sortLeaderboard(computeLeaderboard(players, rounds), sortKey)
 
@@ -41,20 +50,26 @@ export function LeaderboardScreen() {
         <SortButton
           active={sortKey === 'winPct'}
           testid="sort-winpct"
-          onClick={() => setSortKey('winPct')}
+          onClick={() => changeSort('winPct')}
         >
           Win %
         </SortButton>
         <SortButton
           active={sortKey === 'pointDiff'}
           testid="sort-diff"
-          onClick={() => setSortKey('pointDiff')}
+          onClick={() => changeSort('pointDiff')}
         >
           Point Diff
         </SortButton>
       </div>
 
-      <div className="overflow-hidden rounded-md border border-rule bg-raised">
+      <div
+        key={resortNonce}
+        className={cn(
+          'overflow-hidden rounded-md border border-rule bg-raised',
+          resortNonce > 0 && 'deal-in',
+        )}
+      >
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b-2 border-ink text-[10px] font-extrabold uppercase tracking-[0.1em] text-ink-soft">

@@ -10,10 +10,12 @@ type Variant = 'signal' | 'ink' | 'outline' | 'ghost'
 
 const variantClasses: Record<Variant, string> = {
   signal:
-    'border border-signal bg-signal text-on-signal hover:border-signal-deep hover:bg-signal-deep',
-  ink: 'border border-ink bg-ink text-paper hover:opacity-90',
-  outline: 'border border-rule bg-raised text-ink hover:border-ink',
-  ghost: 'border border-transparent bg-transparent text-ink-soft hover:bg-sunk',
+    'border border-signal bg-signal text-on-signal hover:border-signal-deep hover:bg-signal-deep active:border-signal-deep active:bg-signal-deep',
+  ink: 'border border-ink bg-ink text-paper hover:opacity-90 active:opacity-80',
+  outline:
+    'border border-rule bg-raised text-ink hover:border-ink active:border-ink active:bg-sunk',
+  ghost:
+    'border border-transparent bg-transparent text-ink-soft hover:bg-sunk active:bg-sunk',
 }
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -24,7 +26,7 @@ export function Button({ variant = 'signal', className, ...props }: ButtonProps)
   return (
     <button
       className={cn(
-        'inline-flex min-h-12 items-center justify-center gap-2 rounded-md px-4',
+        'inline-flex min-h-12 select-none items-center justify-center gap-2 rounded-md px-4',
         'text-sm font-extrabold uppercase tracking-[0.09em] transition-colors duration-150',
         'disabled:cursor-not-allowed disabled:opacity-45',
         variantClasses[variant],

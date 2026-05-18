@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useStore } from '@/lib/store'
 import type { ConstraintMode, Player } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -57,7 +57,7 @@ export function PlayersScreen() {
             data-count={courtCount}
             className="flex h-16 flex-1 items-center justify-center rounded-md border border-ink bg-ink text-4xl font-extrabold tabular-nums text-paper"
           >
-            {courtCount}
+            <RollingNumber value={courtCount} />
           </div>
           <button
             data-testid="court-count-inc"
@@ -236,5 +236,55 @@ function PlayerRow({ player, all }: { player: Player; all: Player[] }) {
         </div>
       )}
     </li>
+  )
+}
+
+/**
+ * A digit that rolls when it changes: the old value slides out as the new one
+ * rolls in behind it. Rolls up on an increment, down on a decrement.
+ */
+function RollingNumber({ value }: { value: number }) {
+  const [current, setCurrent] = useState(value)
+  const [previous, setPrevious] = useState<number | null>(null)
+  const [dir, setDir] = useState<'up' | 'down'>('up')
+
+  useEffect(() => {
+    if (value === current) return
+    setDir(value > current ? 'up' : 'down')
+    setPrevious(current)
+    setCurrent(value)
+    const t = setTimeout(() => setPrevious(null), 280)
+    return () => clearTimeout(t)
+  }, [value, current])
+
+  const rolling = previous !== null
+  return (
+    <span className="relative inline-flex h-[1em] items-center overflow-hidden leading-none">
+      {/* Invisible holder keeps the box sized to the widest value on screen. */}
+      <span className="invisible" aria-hidden="true">
+        {Math.max(value, previous ?? value)}
+      </span>
+      <span
+        key={current}
+        className={cn(
+          'absolute inset-0 flex items-center justify-center',
+          rolling && (dir === 'up' ? 'roll-up-in' : 'roll-down-in'),
+        )}
+      >
+        {current}
+      </span>
+      {rolling && (
+        <span
+          key={`prev-${previous}`}
+          aria-hidden="true"
+          className={cn(
+            'absolute inset-0 flex items-center justify-center',
+            dir === 'up' ? 'roll-up-out' : 'roll-down-out',
+          )}
+        >
+          {previous}
+        </span>
+      )}
+    </span>
   )
 }

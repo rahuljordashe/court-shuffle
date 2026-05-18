@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils'
 import { PlayersScreen } from './components/PlayersScreen'
 import { RoundScreen } from './components/RoundScreen'
 import { LeaderboardScreen } from './components/LeaderboardScreen'
+import { Toaster } from './components/Toaster'
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'players', label: 'Players' },
@@ -60,6 +61,8 @@ export default function App() {
           )
         })}
       </nav>
+
+      <Toaster />
     </div>
   )
 }

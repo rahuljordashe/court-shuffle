@@ -1,0 +1,1005 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Court Shuffle · Motion Lab</title>
+<style>
+  /* ---- Court Shuffle tokens ------------------------------------------ */
+  :root{
+    --paper:oklch(0.98 0.007 78);
+    --raised:oklch(0.995 0.003 80);
+    --sunk:oklch(0.955 0.009 78);
+    --ink:oklch(0.235 0.014 62);
+    --ink-soft:oklch(0.505 0.016 62);
+    --ink-faint:oklch(0.66 0.014 62);
+    --rule:oklch(0.235 0.014 62 / 0.16);
+    --signal:oklch(0.535 0.205 34);
+    --signal-deep:oklch(0.46 0.185 34);
+    --signal-wash:oklch(0.955 0.035 46);
+    --on-signal:oklch(0.99 0.014 78);
+    /* workbench surround (this is a desk-side tool, not the courtside app) */
+    --bench:oklch(0.30 0.014 64);
+    --bench-soft:oklch(0.38 0.013 64);
+    --bench-line:oklch(0.99 0.01 78 / 0.14);
+    --bench-ink:oklch(0.96 0.012 78);
+    --bench-faint:oklch(0.78 0.012 78);
+    --e-quart:cubic-bezier(0.25,1,0.5,1);
+    --e-quint:cubic-bezier(0.22,1,0.36,1);
+    --e-expo:cubic-bezier(0.16,1,0.3,1);
+    font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    background:var(--bench);
+    color:var(--bench-ink);
+    -webkit-font-smoothing:antialiased;
+    padding:0 0 80px;
+  }
+
+  /* ---- masthead ------------------------------------------------------ */
+  .masthead{
+    max-width:1180px;margin:0 auto;padding:40px 28px 22px;
+  }
+  .kicker{
+    font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.22em;
+    color:var(--signal);
+  }
+  .masthead h1{
+    font-size:30px;font-weight:800;letter-spacing:-0.02em;line-height:1.1;margin-top:8px;
+  }
+  .masthead h1 .sl{color:var(--signal);}
+  .masthead p{
+    margin-top:12px;max-width:68ch;font-size:14px;line-height:1.55;color:var(--bench-faint);
+  }
+  .masthead p b{color:var(--bench-ink);font-weight:700;}
+
+  /* ---- control bar --------------------------------------------------- */
+  .controls{
+    position:sticky;top:0;z-index:50;
+    background:oklch(0.30 0.014 64 / 0.94);
+    backdrop-filter:blur(8px);
+    border-top:1px solid var(--bench-line);
+    border-bottom:1px solid var(--bench-line);
+  }
+  .controls-in{
+    max-width:1180px;margin:0 auto;padding:12px 28px;
+    display:flex;flex-wrap:wrap;gap:8px;align-items:center;
+  }
+  .ctl-label{
+    font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.16em;
+    color:var(--bench-faint);margin-right:4px;
+  }
+  button.moment{
+    appearance:none;cursor:pointer;
+    height:38px;padding:0 14px;
+    background:var(--bench-soft);
+    color:var(--bench-ink);
+    border:1px solid var(--bench-line);
+    border-radius:6px;
+    font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;
+    transition:background .14s var(--e-quart),border-color .14s var(--e-quart),transform .08s var(--e-expo);
+  }
+  button.moment:hover{background:oklch(0.44 0.013 64);border-color:oklch(0.99 0.01 78 / 0.3);}
+  button.moment:active{transform:scale(0.96);}
+  button.moment.primary{
+    background:var(--signal);border-color:var(--signal);color:var(--on-signal);
+  }
+  button.moment.primary:hover{background:var(--signal-deep);border-color:var(--signal-deep);}
+  .spacer{flex:1;}
+  .rm-toggle{
+    display:flex;align-items:center;gap:8px;
+    font-size:11px;font-weight:700;color:var(--bench-faint);
+    cursor:pointer;user-select:none;
+  }
+  .rm-toggle input{width:16px;height:16px;accent-color:var(--signal);cursor:pointer;}
+
+  /* ---- grid of phones ------------------------------------------------ */
+  .grid{
+    max-width:1180px;margin:26px auto 0;padding:0 28px;
+    display:grid;gap:26px;
+    grid-template-columns:repeat(3,1fr);
+  }
+  @media(max-width:1040px){.grid{grid-template-columns:repeat(2,1fr);}}
+  @media(max-width:720px){.grid{grid-template-columns:1fr;}}
+
+  .cell{display:flex;flex-direction:column;}
+  .cell-head{display:flex;align-items:baseline;gap:8px;margin-bottom:3px;}
+  .dnum{
+    font-size:11px;font-weight:800;color:var(--signal);
+    font-variant-numeric:tabular-nums;
+  }
+  .dname{font-size:15px;font-weight:800;letter-spacing:-0.01em;}
+  .replay{
+    margin-left:auto;appearance:none;cursor:pointer;
+    width:26px;height:26px;line-height:1;
+    background:transparent;border:1px solid var(--bench-line);border-radius:6px;
+    color:var(--bench-faint);font-size:13px;
+    transition:color .14s,border-color .14s,transform .3s var(--e-quint);
+  }
+  .replay:hover{color:var(--bench-ink);border-color:oklch(0.99 0.01 78 / 0.3);}
+  .replay:active{transform:rotate(-180deg);}
+  .tagline{
+    font-size:12px;line-height:1.5;color:var(--bench-faint);
+    margin-bottom:12px;min-height:54px;
+  }
+  .tagline b{color:var(--bench-ink);font-weight:700;}
+
+  /* ---- the phone ----------------------------------------------------- */
+  .phone{
+    width:100%;
+    background:var(--paper);
+    border-radius:20px;
+    overflow:hidden;
+    color:var(--ink);
+    box-shadow:0 18px 40px -16px oklch(0 0 0 / 0.55);
+    position:relative;
+  }
+  .screen{display:flex;flex-direction:column;position:relative;}
+
+  .hdr{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:13px 16px;border-bottom:2px solid var(--ink);
+  }
+  .hdr .logo{
+    font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:.16em;
+  }
+  .hdr .logo .sl{color:var(--signal);}
+  .hdr .pc{
+    font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;
+    color:var(--ink-soft);font-variant-numeric:tabular-nums;
+  }
+
+  .body{padding:14px 16px 16px;display:flex;flex-direction:column;gap:12px;}
+
+  .lbl{
+    font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.16em;
+    color:var(--ink-soft);
+  }
+
+  /* stepper */
+  .stepper{display:flex;gap:6px;}
+  .step-btn{
+    width:46px;height:46px;flex:none;
+    display:flex;align-items:center;justify-content:center;
+    background:var(--raised);border:1px solid var(--rule);border-radius:6px;
+    font-size:22px;font-weight:800;color:var(--ink);cursor:pointer;
+    transition:background .12s var(--e-quart),transform .1s var(--e-expo);
+  }
+  .step-btn:active{background:var(--ink);color:var(--paper);transform:scale(0.95);}
+  .digit-box{
+    flex:1;height:46px;
+    display:flex;align-items:center;justify-content:center;
+    background:var(--ink);border-radius:6px;
+    overflow:hidden;position:relative;
+  }
+  .digit{
+    font-size:26px;font-weight:800;color:var(--paper);
+    font-variant-numeric:tabular-nums;line-height:1;
+    display:inline-block;
+  }
+
+  /* generate button */
+  .gen{
+    appearance:none;cursor:pointer;width:100%;height:48px;
+    display:flex;align-items:center;justify-content:center;gap:8px;
+    background:var(--signal);color:var(--on-signal);
+    border:1px solid var(--signal);border-radius:6px;
+    font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;
+    transition:background .14s var(--e-quart);
+  }
+  .gen:hover{background:var(--signal-deep);}
+
+  /* round title */
+  .rtitle{
+    display:flex;align-items:baseline;justify-content:space-between;
+    border-bottom:2px solid var(--ink);padding-bottom:7px;
+  }
+  .rtitle h2{font-size:24px;font-weight:800;letter-spacing:-0.02em;}
+  .rtitle h2 .rnum{font-variant-numeric:tabular-nums;}
+  .status{
+    display:flex;align-items:center;gap:5px;
+    font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;
+    color:var(--signal);
+  }
+  .live-dot{width:7px;height:7px;border-radius:999px;background:var(--signal);}
+
+  /* courts */
+  .courts{display:flex;flex-direction:column;gap:10px;}
+  .court{
+    border:1px solid var(--rule);border-radius:6px;background:var(--raised);
+    overflow:hidden;
+  }
+  .court-tag{
+    padding:6px 11px;border-bottom:1px solid var(--rule);
+    font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.18em;
+    color:var(--ink-soft);
+  }
+  .team{
+    display:flex;align-items:center;gap:8px;padding:10px 11px;
+    position:relative;
+  }
+  .team + .team{border-top:1px solid var(--rule);}
+  .flag{
+    width:30px;flex:none;
+    font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;
+    color:var(--signal-deep);line-height:1.05;
+  }
+  .team .names{
+    font-size:14px;font-weight:700;color:var(--ink);white-space:nowrap;
+  }
+  .leader{
+    flex:1;min-width:8px;height:0;align-self:center;
+    border-bottom:1px dotted var(--ink-faint);
+  }
+  .chip{
+    width:46px;height:38px;flex:none;
+    display:flex;align-items:center;justify-content:center;
+    border:1px solid var(--rule);border-radius:5px;background:var(--paper);
+    font-size:17px;font-weight:800;color:var(--ink);
+    font-variant-numeric:tabular-nums;overflow:hidden;
+  }
+  /* winner state (shared target; each direction transitions to it differently) */
+  .team.win .chip{background:var(--signal);border-color:var(--signal);color:var(--on-signal);}
+
+  .sitouts{
+    display:flex;align-items:baseline;gap:7px;
+    border-top:1px solid var(--rule);padding-top:10px;
+  }
+  .sitouts .so-lbl{
+    font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.14em;
+    color:var(--ink-soft);flex:none;
+  }
+  .sitouts .so-names{font-size:13px;font-weight:700;color:var(--ink);}
+
+  .divider{height:1px;background:var(--rule);}
+
+  /* leaderboard */
+  .board{width:100%;border:1px solid var(--rule);border-radius:6px;background:var(--raised);overflow:hidden;}
+  .brow{
+    display:grid;grid-template-columns:26px 1fr 52px 44px;
+    align-items:center;padding:8px 11px;
+  }
+  .brow + .brow{border-top:1px solid var(--rule);}
+  .brow.head{
+    border-bottom:2px solid var(--ink);
+    font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;
+    color:var(--ink-soft);
+  }
+  .brow .rk{
+    font-size:12px;font-weight:800;color:var(--ink-faint);font-variant-numeric:tabular-nums;
+  }
+  .brow .nm{font-size:13px;font-weight:700;color:var(--ink);}
+  .brow .wp{font-size:12px;font-weight:700;color:var(--ink);text-align:right;font-variant-numeric:tabular-nums;}
+  .brow .df{font-size:12px;font-weight:700;color:var(--ink-soft);text-align:right;font-variant-numeric:tabular-nums;}
+  .brow.head .wp,.brow.head .df{font-weight:800;}
+
+  /* toast layer */
+  .toast-layer{
+    position:absolute;left:0;right:0;bottom:12px;
+    display:flex;flex-direction:column;align-items:center;gap:8px;
+    pointer-events:none;padding:0 16px;
+  }
+  .toast{
+    width:100%;
+    display:flex;align-items:center;gap:10px;
+    background:var(--ink);color:var(--paper);
+    border-radius:6px;padding:11px 13px;
+    box-shadow:0 10px 24px -10px oklch(0 0 0 / 0.5);
+  }
+  .toast .t-tag{
+    flex:none;align-self:center;
+    background:var(--signal);color:var(--on-signal);
+    font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;
+    padding:5px 7px;border-radius:4px;
+  }
+  .toast .t-text{
+    flex:1;font-size:12px;font-weight:700;line-height:1.35;color:var(--paper);
+  }
+  .toast .t-undo{
+    flex:none;appearance:none;cursor:pointer;
+    background:transparent;border:1px solid oklch(0.99 0.01 78 / 0.3);
+    color:var(--paper);border-radius:5px;padding:6px 10px;
+    font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;
+  }
+
+  /* split-flap glyph (D2) */
+  .flap{display:inline-block;}
+
+  /* footer note */
+  .footnote{
+    max-width:1180px;margin:34px auto 0;padding:0 28px;
+    font-size:12px;line-height:1.6;color:var(--bench-faint);
+  }
+  .footnote b{color:var(--bench-ink);}
+  .rec{
+    margin-top:14px;padding:14px 16px;
+    background:var(--bench-soft);border:1px solid var(--bench-line);border-radius:8px;
+    font-size:13px;line-height:1.6;color:var(--bench-ink);
+  }
+  .rec .rk-tag{
+    font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.16em;
+    color:var(--signal);display:block;margin-bottom:5px;
+  }
+
+  /* =================================================================== */
+  /*  DIRECTION 1 — HAIRLINE : opacity + color only, nothing travels      */
+  /* =================================================================== */
+  @keyframes d1-fade{from{opacity:0;}to{opacity:1;}}
+  .dir-d1 .stage.run{animation:d1-fade 170ms var(--e-quart) backwards;animation-delay:calc(var(--i)*42ms);}
+  .dir-d1 .team{transition:background .17s var(--e-quart);}
+  .dir-d1 .team .chip{transition:background .17s var(--e-quart),border-color .17s var(--e-quart),color .17s var(--e-quart);}
+  .dir-d1 .team .flag{transition:opacity .17s var(--e-quart);}
+  .dir-d1 .digit.run{animation:d1-fade 150ms var(--e-quart);}
+  .dir-d1 .toast.run{animation:d1-fade 170ms var(--e-quart);}
+  .dir-d1 .brow.run{animation:d1-fade 200ms var(--e-quart);}
+
+  /* =================================================================== */
+  /*  DIRECTION 2 — SPLIT-FLAP : the Solari board, made literal           */
+  /* =================================================================== */
+  @keyframes d2-flapdrop{from{opacity:0;transform:translateY(-7px);}to{opacity:1;transform:translateY(0);}}
+  .dir-d2 .toast.run{animation:d2-flapdrop 200ms var(--e-quart);}
+  .dir-d2 .team{transition:background .16s var(--e-quart);}
+  .dir-d2 .team .flag{transition:opacity .12s linear;}
+
+  /* =================================================================== */
+  /*  DIRECTION 3 — DEAL : matchups dealt in like cards off the deck      */
+  /* =================================================================== */
+  @keyframes d3-deal{
+    from{opacity:0;transform:translateY(-26px) rotate(-3deg);}
+    to{opacity:1;transform:translateY(0) rotate(0);}
+  }
+  .dir-d3 .stage.run{
+    animation:d3-deal 320ms var(--e-quint) backwards;
+    animation-delay:calc(var(--i)*70ms);
+  }
+  @keyframes d3-toast{
+    from{opacity:0;transform:translateY(42px) rotate(4deg);}
+    to{opacity:1;transform:translateY(0) rotate(0);}
+  }
+  .dir-d3 .toast.run{animation:d3-toast 320ms var(--e-quint);}
+  /* winner wash wipes across */
+  .dir-d3 .team::before{
+    content:"";position:absolute;inset:0;background:var(--signal-wash);
+    transform-origin:left;transform:scaleX(0);z-index:0;
+  }
+  .dir-d3 .team>*{position:relative;z-index:1;}
+  .dir-d3 .team.win::before{animation:d3-wipe 360ms var(--e-quint) forwards;}
+  @keyframes d3-wipe{to{transform:scaleX(1);}}
+  .dir-d3 .team.win .chip{transition:background .18s var(--e-quart) .14s,border-color .18s var(--e-quart) .14s,color .18s var(--e-quart) .14s;}
+  @keyframes d3-roll-out{to{transform:translateY(-100%);opacity:0;}}
+  @keyframes d3-roll-in{from{transform:translateY(100%);opacity:0;}to{transform:translateY(0);opacity:1;}}
+
+  /* =================================================================== */
+  /*  DIRECTION 4 — SNAP : referee's whistle, percussive, one-frame flash */
+  /* =================================================================== */
+  @keyframes d4-snap{
+    from{opacity:0;transform:scale(0.94);}
+    60%{opacity:1;}
+    to{opacity:1;transform:scale(1);}
+  }
+  .dir-d4 .stage.run{
+    animation:d4-snap 140ms var(--e-expo) backwards;
+    animation-delay:calc(var(--i)*34ms);
+  }
+  @keyframes d4-winflash{
+    0%{background:var(--raised);}
+    14%{background:var(--signal);}
+    100%{background:var(--signal-wash);}
+  }
+  .dir-d4 .team.win{animation:d4-winflash 420ms var(--e-quart) forwards;}
+  @keyframes d4-chip-punch{
+    0%{transform:scale(1);}
+    35%{transform:scale(1.18);}
+    100%{transform:scale(1);}
+  }
+  .dir-d4 .team.win .chip{
+    background:var(--signal);border-color:var(--signal);color:var(--on-signal);
+    animation:d4-chip-punch 240ms var(--e-expo);
+  }
+  @keyframes d4-toast{from{opacity:0;transform:scale(0.9);}to{opacity:1;transform:scale(1);}}
+  .dir-d4 .toast.run{animation:d4-toast 130ms var(--e-expo);}
+  @keyframes d4-digit-punch{from{opacity:0;transform:scale(1.3);}to{opacity:1;transform:scale(1);}}
+  .dir-d4 .digit.run{animation:d4-digit-punch 130ms var(--e-expo);}
+  .dir-d4 .brow.run{animation:d4-snap 130ms var(--e-expo);}
+
+  /* =================================================================== */
+  /*  DIRECTION 5 — TALLY : the math is alive, numbers roll to value      */
+  /* =================================================================== */
+  .dir-d5 .stage.run{animation:d1-fade 180ms var(--e-quart) backwards;animation-delay:calc(var(--i)*38ms);}
+  .dir-d5 .team{transition:background .22s var(--e-quart);}
+  .dir-d5 .team .flag{transition:opacity .22s var(--e-quart);}
+  .dir-d5 .toast.run{animation:d1-fade 180ms var(--e-quart);}
+
+  /* =================================================================== */
+  /*  DIRECTION 6 — CASCADE : one rehearsed entrance, top-down on a beat  */
+  /* =================================================================== */
+  @keyframes d6-rise{
+    from{opacity:0;transform:translateY(12px);}
+    to{opacity:1;transform:translateY(0);}
+  }
+  .dir-d6 .stage.run{
+    animation:d6-rise 260ms var(--e-quint) backwards;
+    animation-delay:calc(var(--i)*62ms);
+  }
+  @keyframes d6-draw{from{transform:scaleX(0);}to{transform:scaleX(1);}}
+  .dir-d6 .rtitle.run{
+    border-bottom-color:transparent;
+    position:relative;
+  }
+  .dir-d6 .rtitle.run::after{
+    content:"";position:absolute;left:0;right:0;bottom:-2px;height:2px;
+    background:var(--ink);transform-origin:left;
+    animation:d6-draw 320ms var(--e-quint) forwards;
+  }
+  .dir-d6 .team{transition:background .2s var(--e-quart);}
+  .dir-d6 .team .flag{transition:opacity .2s var(--e-quart) .09s;}
+  .dir-d6 .team.win .chip{transition:background .2s var(--e-quart) .16s,border-color .2s var(--e-quart) .16s,color .2s var(--e-quart) .16s;}
+  .dir-d6 .toast .t-tag,.dir-d6 .toast .t-text,.dir-d6 .toast .t-undo{animation:d6-rise 240ms var(--e-quint) backwards;}
+  .dir-d6 .toast.run .t-tag{animation-delay:0ms;}
+  .dir-d6 .toast.run .t-text{animation-delay:55ms;}
+  .dir-d6 .toast.run .t-undo{animation-delay:110ms;}
+  @keyframes d6-toastpanel{from{opacity:0;}to{opacity:1;}}
+  .dir-d6 .toast.run{animation:d6-toastpanel 160ms var(--e-quart);}
+  .dir-d6 .digit.run{animation:d6-rise 240ms var(--e-quint);}
+  .dir-d6 .brow.run{animation:d6-rise 260ms var(--e-quint) backwards;animation-delay:calc(var(--i)*55ms);}
+
+  /* ---- reduced motion : all six collapse to an honest crossfade ------ */
+  .lab.reduced .phone *{
+    animation-duration:.01ms !important;
+    animation-delay:0ms !important;
+    transition-duration:120ms !important;
+  }
+  .lab.reduced .stage.run{animation:d1-fade 140ms linear !important;}
+  .lab.reduced .toast.run,.lab.reduced .brow.run,.lab.reduced .digit.run{animation:d1-fade 140ms linear !important;}
+  @media(prefers-reduced-motion:reduce){
+    .phone *{animation-duration:.01ms !important;transition-duration:120ms !important;}
+  }
+</style>
+</head>
+<body>
+<div class="lab" id="lab">
+
+  <header class="masthead">
+    <div class="kicker">Court Shuffle · Motion Lab</div>
+    <h1>Six ways to move a departure board<span class="sl">.</span></h1>
+    <p>
+      Court Shuffle just got its first coat of motion in a parallel session: a
+      staggered court reveal and a pulsing live dot. That sets a <b>baseline</b>;
+      this lab settles the next decision, which motion <b>system</b> the app
+      commits to. It puts six on the real UI so you can compare them on the
+      <b>same moment, side by side</b>. Use the bar below to fire a moment, then
+      watch all six respond. Each direction is a complete personality, not a
+      menu of effects. They run from <b>most restrained</b> (1) to
+      <b>most theatrical</b> (6). Pick one, or one for the hero moment and a
+      quieter one for everything else.
+    </p>
+  </header>
+
+  <div class="controls">
+    <div class="controls-in">
+      <span class="ctl-label">Fire a moment</span>
+      <button class="moment" data-moment="generate">Generate round</button>
+      <button class="moment" data-moment="winner">Enter winning score</button>
+      <button class="moment" data-moment="court">Add a court</button>
+      <button class="moment" data-moment="toast-add">Toast · player added</button>
+      <button class="moment" data-moment="toast-remove">Toast · removed + undo</button>
+      <button class="moment" data-moment="sort">Re-sort leaderboard</button>
+      <button class="moment primary" data-moment="replay">▶ Replay sequence</button>
+      <span class="spacer"></span>
+      <label class="rm-toggle">
+        <input type="checkbox" id="rm" />
+        Simulate reduced motion
+      </label>
+    </div>
+  </div>
+
+  <main class="grid" id="grid"></main>
+
+  <div class="footnote">
+    <b>How to read this:</b> every direction respects <b>prefers-reduced-motion</b>
+    (toggle it above to see the honest fallback: all six collapse to a 140 ms
+    crossfade, no travel). Durations are tuned for a courtside tool: feedback
+    100&ndash;150 ms, reveals 240&ndash;320 ms, nothing over 420 ms. No bounce,
+    no elastic, no confetti. All six preserve the <code>data-testid</code> hooks
+    the Playwright suite keys off.
+    <div class="rec">
+      <span class="rk-tag">My recommendation</span>
+      Lead with <b>2 · Split-Flap</b> for the hero moments (generate, scores,
+      court count, ranks) because the Solari board <i>is</i> the brand North Star
+      in DESIGN.md, and back it with <b>1 · Hairline</b> discipline everywhere
+      else (tabs, toasts, list edits). That pairing owns the metaphor without
+      ever slowing the &ldquo;generate, glance, go&rdquo; path. If the split-flap
+      reads as too much, <b>4 · Snap</b> is the safe high-energy fallback.
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ===================================================================== */
+/*  Court Shuffle — Motion Lab                                           */
+/* ===================================================================== */
+const lab = document.getElementById('lab');
+const grid = document.getElementById('grid');
+
+const DIRECTIONS = [
+  { id:'d1', name:'Hairline',
+    tag:'<b>Invisible by design.</b> Opacity and colour only, ~150 ms, nothing travels. The courtside-safe floor — offends nothing, slows nothing.' },
+  { id:'d2', name:'Split-Flap',
+    tag:'<b>The Solari board, literal.</b> Names, digits and scores flip through glyphs to land. Maximum brand ownership — DESIGN.md’s North Star, moving.' },
+  { id:'d3', name:'Deal',
+    tag:'<b>Matchups are dealt.</b> Courts slide in like cards off the deck; the winner’s wash wipes across the row. Kinetic, literal to “shuffle”.' },
+  { id:'d4', name:'Snap',
+    tag:'<b>Referee’s whistle.</b> Percussive scale punches, a one-frame signal flash on whatever changed. Energy through pace, zero travel.' },
+  { id:'d5', name:'Tally',
+    tag:'<b>The math is alive.</b> Scores, percentages and ranks roll to their values like a stadium scoreboard. Reveals stay quiet so numbers carry it.' },
+  { id:'d6', name:'Cascade',
+    tag:'<b>One rehearsed entrance.</b> The round cascades in top-down, the title rule draws itself, every element lands on its own beat.' },
+];
+
+/* ---- phone markup --------------------------------------------------- */
+function phoneHTML(){
+  return `
+  <div class="screen">
+    <div class="hdr">
+      <div class="logo">Court<span class="sl">/</span>Shuffle</div>
+      <div class="pc"><span class="pc-n">10</span> Players</div>
+    </div>
+    <div class="body">
+      <div class="lbl">Courts</div>
+      <div class="stepper">
+        <div class="step-btn st-dec">&minus;</div>
+        <div class="digit-box"><span class="digit">2</span></div>
+        <div class="step-btn st-inc">+</div>
+      </div>
+      <button class="gen">Generate next round &rarr;</button>
+      <div class="rtitle">
+        <h2>Round <span class="rnum">2</span></h2>
+        <span class="status"><span class="live-dot"></span>In progress</span>
+      </div>
+      <div class="courts">
+        <div class="court stage" data-i="0">
+          <div class="court-tag">Court 1</div>
+          <div class="team" data-team="a">
+            <span class="flag"></span>
+            <span class="names">Maya &amp; Sam</span>
+            <span class="leader"></span>
+            <span class="chip"></span>
+          </div>
+          <div class="team" data-team="b">
+            <span class="flag"></span>
+            <span class="names">Dev &amp; Nina</span>
+            <span class="leader"></span>
+            <span class="chip"></span>
+          </div>
+        </div>
+        <div class="court stage" data-i="1">
+          <div class="court-tag">Court 2</div>
+          <div class="team">
+            <span class="flag"></span>
+            <span class="names">Priya &amp; Leo</span>
+            <span class="leader"></span>
+            <span class="chip"></span>
+          </div>
+          <div class="team">
+            <span class="flag"></span>
+            <span class="names">Aisha &amp; Raj</span>
+            <span class="leader"></span>
+            <span class="chip"></span>
+          </div>
+        </div>
+      </div>
+      <div class="sitouts stage" data-i="2">
+        <span class="so-lbl">Sitting out</span>
+        <span class="so-names">Tara, Omar</span>
+      </div>
+      <div class="divider"></div>
+      <div class="lbl">Standings</div>
+      <div class="board">
+        <div class="brow head"><span class="rk">#</span><span class="nm">Player</span><span class="wp">Win %</span><span class="df">Diff</span></div>
+      </div>
+    </div>
+    <div class="toast-layer"></div>
+  </div>`;
+}
+
+/* leaderboard data — two orderings so a re-sort visibly reshuffles ranks */
+const BOARD = [
+  { id:'maya', nm:'Maya', wp:'100%', df:'+8'  },
+  { id:'dev',  nm:'Dev',  wp:'100%', df:'+3'  },
+  { id:'leo',  nm:'Leo',  wp:'67%',  df:'+12' },
+  { id:'sam',  nm:'Sam',  wp:'50%',  df:'+15' },
+];
+const ORDER_WIN  = ['maya','dev','leo','sam'];   // by win %
+const ORDER_DIFF = ['sam','leo','maya','dev'];   // by point diff
+
+function rowHTML(p){
+  return `<div class="brow" data-id="${p.id}">
+    <span class="rk">0</span><span class="nm">${p.nm}</span>
+    <span class="wp">${p.wp}</span><span class="df">${p.df}</span></div>`;
+}
+
+/* ---- build the six cells ------------------------------------------- */
+const phones = {};
+DIRECTIONS.forEach((d,idx)=>{
+  const cell = document.createElement('div');
+  cell.className = 'cell';
+  cell.innerHTML = `
+    <div class="cell-head">
+      <span class="dnum">${idx+1}</span>
+      <span class="dname">${d.name}</span>
+      <button class="replay" title="Replay generate on this phone">&#x21bb;</button>
+    </div>
+    <div class="tagline">${d.tag}</div>
+    <div class="phone dir-${d.id}">${phoneHTML()}</div>`;
+  grid.appendChild(cell);
+  const phone = cell.querySelector('.phone');
+  phones[d.id] = phone;
+  // seed leaderboard
+  const board = phone.querySelector('.board');
+  ORDER_WIN.forEach(id=>{
+    board.insertAdjacentHTML('beforeend', rowHTML(BOARD.find(p=>p.id===id)));
+  });
+  phone._order = 'win';
+  renumber(phone);
+  cell.querySelector('.replay').addEventListener('click',()=>fire('generate',d.id));
+});
+
+function renumber(phone){
+  phone.querySelectorAll('.board .brow:not(.head)').forEach((r,i)=>{
+    r.querySelector('.rk').textContent = String(i+1);
+  });
+}
+
+/* ===================================================================== */
+/*  shared helpers                                                       */
+/* ===================================================================== */
+const reduced = ()=>lab.classList.contains('reduced');
+const wait = ms=>new Promise(r=>setTimeout(r,ms));
+
+function restart(el, cls='run'){
+  el.classList.remove(cls);
+  void el.offsetWidth;          /* force reflow so the animation re-fires */
+  el.classList.add(cls);
+}
+
+/* split-flap a text node through random glyphs to a final string (D2) */
+const LETTERS='ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+const DIGITS='0123456789';
+function splitFlap(el, finalText, {perChar=14, steps=4, stepMs=42}={}){
+  if(reduced()){ el.textContent = finalText; return Promise.resolve(); }
+  const chars=[...finalText];
+  el.innerHTML='';
+  const spans=chars.map(ch=>{
+    const s=document.createElement('span');
+    s.className='flap';
+    s.textContent = ch===' '?' ':ch;
+    el.appendChild(s);
+    return s;
+  });
+  return new Promise(resolve=>{
+    let done=0;
+    spans.forEach((s,i)=>{
+      const target=chars[i];
+      if(target===' '||target==='&'){ return; }
+      const pool = DIGITS.includes(target)?DIGITS:LETTERS;
+      let n=0;
+      const start=i*perChar;
+      setTimeout(()=>{
+        const iv=setInterval(()=>{
+          n++;
+          if(n>=steps){
+            clearInterval(iv);
+            s.textContent = target;
+            done++;
+            if(done>=spans.filter(x=>{const c=x.textContent;return c!==' '&&c!==' '&&c!=='&';}).length) resolve();
+          }else{
+            s.textContent = pool[(Math.random()*pool.length)|0];
+          }
+        },stepMs);
+      },start);
+    });
+    /* safety resolve */
+    setTimeout(resolve, start_total(chars.length,perChar,steps,stepMs));
+  });
+}
+function start_total(len,perChar,steps,stepMs){return len*perChar+steps*stepMs+80;}
+
+/* count a number up to its target (D5) */
+function countUp(el, to, dur=440){
+  if(reduced()){ el.textContent=to; return; }
+  const from=0, t0=performance.now();
+  function frame(now){
+    const p=Math.min(1,(now-t0)/dur);
+    const e=1-Math.pow(1-p,3);                 /* ease-out cubic */
+    el.textContent = Math.round(from+(to-from)*e);
+    if(p<1) requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+}
+
+/* roll a digit box: old slides out top, new slides in bottom (D3/D5) */
+function rollDigit(box, value, ease='var(--e-quint)'){
+  const cur=box.querySelector('.digit');
+  if(reduced()){ cur.textContent=value; return; }
+  const next=cur.cloneNode(false);
+  next.textContent=value;
+  next.style.position='absolute';
+  box.appendChild(next);
+  cur.style.animation=`d3-roll-out 260ms ${ease} forwards`;
+  next.style.animation=`d3-roll-in 260ms ${ease} forwards`;
+  setTimeout(()=>{ cur.remove(); next.style.position=''; next.style.animation=''; },300);
+}
+
+/* FLIP a list to a new DOM order (D2/D3/D5/D6) */
+function flip(container, rows, newOrder, dur, ease, stagger=0){
+  const first=new Map(rows.map(r=>[r,r.getBoundingClientRect().top]));
+  newOrder.forEach(r=>container.appendChild(r));
+  rows.forEach((r,i)=>{
+    const dy=first.get(r)-r.getBoundingClientRect().top;
+    if(!dy) return;
+    r.style.transition='none';
+    r.style.transform=`translateY(${dy}px)`;
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      r.style.transition=`transform ${dur}ms ${ease} ${i*stagger}ms`;
+      r.style.transform='';
+    }));
+  });
+  setTimeout(()=>rows.forEach(r=>{r.style.transition='';r.style.transform='';}),dur+stagger*rows.length+60);
+}
+
+/* ===================================================================== */
+/*  moment : GENERATE  (reveal the round)                                */
+/* ===================================================================== */
+function doGenerate(dir, phone){
+  const stages=[...phone.querySelectorAll('.stage')];
+  /* clear any winner state from a prior run */
+  phone.querySelectorAll('.team').forEach(t=>{
+    t.classList.remove('win');
+    t.querySelector('.chip').textContent='';
+    t.querySelector('.flag').textContent='';
+    t.querySelector('.flag').style.opacity='';
+  });
+
+  if(dir==='d2'){
+    /* split-flap : every court tag + team name flaps into place */
+    phone.querySelectorAll('.team .names').forEach(n=>{ n.dataset.final ||= n.textContent; });
+    stages.forEach((st,si)=>{
+      const tag=st.querySelector('.court-tag');
+      const names=[...st.querySelectorAll('.names')];
+      setTimeout(()=>{
+        if(tag) splitFlap(tag, tag.textContent.toUpperCase(),{stepMs:38});
+        names.forEach((n,ni)=>{
+          setTimeout(()=>splitFlap(n, n.dataset.final,{stepMs:40}), ni*70);
+        });
+        if(st.classList.contains('sitouts')){
+          const so=st.querySelector('.so-names');
+          so.dataset.final ||= so.textContent;
+          splitFlap(so, so.dataset.final,{stepMs:40});
+        }
+      }, si*150);
+    });
+    return;
+  }
+
+  /* d1 / d3 / d4 / d5 / d6 : index-driven CSS reveal */
+  let order=[];
+  stages.forEach(st=>{
+    if(st.classList.contains('court')){
+      order.push(st.querySelector('.court-tag'));
+      st.querySelectorAll('.team').forEach(t=>order.push(t));
+    }else{
+      order.push(st);
+    }
+  });
+  order.forEach((el,i)=>{ el.style.setProperty('--i',i); el.classList.add('stage'); });
+  if(dir==='d6'){
+    const rt=phone.querySelector('.rtitle');
+    rt.style.setProperty('--i','0');
+    restart(rt);
+  }
+  order.forEach(el=>restart(el));
+}
+
+/* ===================================================================== */
+/*  moment : WINNER  (a score is entered, a team wins)                   */
+/* ===================================================================== */
+function doWinner(dir, phone){
+  const c1=phone.querySelector('.court');
+  const teams=c1.querySelectorAll('.team');
+  const winRow=teams[0], loseRow=teams[1];
+  const winChip=winRow.querySelector('.chip');
+  const loseChip=loseRow.querySelector('.chip');
+  const flag=winRow.querySelector('.flag');
+
+  if(dir==='d5'){
+    /* numbers roll up; the row tints the instant the count passes 8 */
+    winRow.classList.remove('win');
+    countUp(loseChip, 8, 380);
+    let tinted=false;
+    const t0=performance.now();
+    (function tick(now){
+      const p=Math.min(1,(now-t0)/460);
+      const e=1-Math.pow(1-p,3);
+      const v=Math.round(11*e);
+      winChip.textContent=v;
+      if(!tinted && v>8){ tinted=true; winRow.classList.add('win'); flag.textContent='Won'; }
+      if(p<1) requestAnimationFrame(tick);
+    })(t0);
+    return;
+  }
+  if(dir==='d2'){
+    /* scores flap in; the winner flag flaps down */
+    splitFlap(loseChip,'8',{stepMs:40});
+    splitFlap(winChip,'11',{stepMs:40}).then(()=>{
+      winRow.classList.add('win');
+      splitFlap(flag,'WON',{stepMs:36});
+    });
+    return;
+  }
+  /* d1 / d3 / d4 / d6 : set values, toggle .win, CSS does the rest */
+  loseChip.textContent='8';
+  winChip.textContent='11';
+  flag.textContent='Won';
+  if(dir==='d4'){ restart(winRow); }     /* re-fire the flash keyframe */
+  winRow.classList.add('win');
+}
+
+/* ===================================================================== */
+/*  moment : COURT  (stepper digit 2 -> 3)                               */
+/* ===================================================================== */
+function doCourt(dir, phone){
+  const box=phone.querySelector('.digit-box');
+  const digit=box.querySelector('.digit');
+  const cur=Number(digit.textContent)||2;
+  const next=cur>=4?2:cur+1;             /* loops 2-3-4 for repeat demos */
+
+  if(dir==='d2'){ splitFlap(digit,String(next),{stepMs:46,steps:5}); return; }
+  if(dir==='d3'||dir==='d5'){ rollDigit(box,String(next)); return; }
+  /* d1 / d4 / d6 : swap text + re-fire the per-direction keyframe */
+  digit.textContent=String(next);
+  restart(digit);
+}
+
+/* ===================================================================== */
+/*  moment : TOAST                                                       */
+/* ===================================================================== */
+function toastHTML(kind){
+  return kind==='remove'
+    ? `<span class="t-tag">Removed</span>
+       <span class="t-text">Dev &mdash; 2 pool links cleared</span>
+       <button class="t-undo">Undo</button>`
+    : `<span class="t-tag">Added</span>
+       <span class="t-text">Maya &mdash; roster now 11 strong</span>`;
+}
+
+function doToast(dir, phone, kind){
+  const layer=phone.querySelector('.toast-layer');
+  layer.innerHTML='';
+  const toast=document.createElement('div');
+  toast.className='toast'+(kind==='remove'?' danger':'');
+  toast.innerHTML=toastHTML(kind);
+  layer.appendChild(toast);
+
+  if(dir==='d2'){
+    /* the message flaps in like a board line; the panel drops via CSS */
+    const txt=toast.querySelector('.t-text');
+    const full=txt.textContent;
+    restart(toast);
+    splitFlap(txt, full,{stepMs:34,perChar:9});
+  }else{
+    restart(toast);
+  }
+}
+
+/* ===================================================================== */
+/*  moment : SORT  (leaderboard re-orders)                               */
+/* ===================================================================== */
+function doSort(dir, phone){
+  const board=phone.querySelector('.board');
+  const rows=[...board.querySelectorAll('.brow:not(.head)')];
+  const targetOrder = phone._order==='win' ? ORDER_DIFF : ORDER_WIN;
+  phone._order = phone._order==='win' ? 'diff' : 'win';
+  const byId=id=>rows.find(r=>r.dataset.id===id);
+  const newOrder=targetOrder.map(byId);
+
+  if(dir==='d1'){
+    /* opacity dip, reorder, fade back — no travel */
+    rows.forEach(r=>r.style.transition='opacity .12s linear');
+    rows.forEach(r=>r.style.opacity='0');
+    setTimeout(()=>{
+      newOrder.forEach(r=>board.appendChild(r));
+      renumber(phone);
+      rows.forEach(r=>{r.style.transition='opacity .16s var(--e-quart)';r.style.opacity='1';});
+    },140);
+    return;
+  }
+  if(dir==='d4'){
+    newOrder.forEach(r=>{ board.appendChild(r); restart(r); });
+    renumber(phone);
+    return;
+  }
+  if(dir==='d6'){
+    rows.forEach((r,i)=>{ r.style.transition='opacity .14s linear';r.style.opacity='0'; });
+    setTimeout(()=>{
+      newOrder.forEach(r=>board.appendChild(r));
+      renumber(phone);
+      newOrder.forEach((r,i)=>{ r.style.opacity='1'; r.style.setProperty('--i',i); restart(r); });
+    },150);
+    return;
+  }
+  /* d2 / d3 / d5 : FLIP the rows to their new positions */
+  const dur = dir==='d3'?340:300;
+  flip(board, rows, newOrder, dur, 'var(--e-quint)', dir==='d6'?40:0);
+  if(dir==='d5'){
+    /* ranks roll to their new value as the rows travel */
+    newOrder.forEach((r,i)=>{
+      const rk=r.querySelector('.rk');
+      const from=Number(rk.textContent), to=i+1;
+      if(from===to) return;
+      const t0=performance.now();
+      (function tick(now){
+        const p=Math.min(1,(now-t0)/dur);
+        rk.textContent=Math.round(from+(to-from)*(1-Math.pow(1-p,3)));
+        if(p<1) requestAnimationFrame(tick);
+      })(t0);
+    });
+  }else{
+    setTimeout(()=>renumber(phone), dir==='d2'?40:0);
+  }
+  if(dir==='d2'){
+    /* the rank digits flap to their new value */
+    newOrder.forEach((r,i)=>{
+      const rk=r.querySelector('.rk');
+      if(Number(rk.textContent)!==i+1) splitFlap(rk,String(i+1),{stepMs:40,steps:4,perChar:0});
+    });
+  }
+}
+
+/* ===================================================================== */
+/*  dispatch                                                             */
+/* ===================================================================== */
+function fire(moment, onlyDir){
+  const ids = onlyDir ? [onlyDir] : DIRECTIONS.map(d=>d.id);
+  ids.forEach(id=>{
+    const phone=phones[id];
+    switch(moment){
+      case 'generate':     doGenerate(id,phone); break;
+      case 'winner':       doWinner(id,phone); break;
+      case 'court':        doCourt(id,phone); break;
+      case 'toast-add':    doToast(id,phone,'add'); break;
+      case 'toast-remove': doToast(id,phone,'remove'); break;
+      case 'sort':         doSort(id,phone); break;
+    }
+  });
+}
+
+async function replaySequence(){
+  DIRECTIONS.forEach(d=>fire('generate',d.id));
+  await wait(1300);
+  DIRECTIONS.forEach(d=>fire('winner',d.id));
+  await wait(1150);
+  DIRECTIONS.forEach(d=>fire('court',d.id));
+  await wait(1000);
+  DIRECTIONS.forEach(d=>fire('toast-add',d.id));
+  await wait(1700);
+  DIRECTIONS.forEach(d=>fire('sort',d.id));
+}
+
+document.querySelectorAll('.moment').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    const m=btn.dataset.moment;
+    if(m==='replay') replaySequence();
+    else fire(m);
+  });
+});
+document.getElementById('rm').addEventListener('change',e=>{
+  lab.classList.toggle('reduced', e.target.checked);
+});
+
+/* gentle intro so the page is alive on load */
+window.addEventListener('load',()=>{ setTimeout(()=>fire('generate'),450); });
+</script>
+</body>
+</html>

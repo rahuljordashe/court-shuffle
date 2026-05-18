@@ -10,6 +10,10 @@ interface SessionState {
   rounds: Round[]
   generationError: string | null
   activeTab: TabKey
+  /** Transient: true for one beat after a round is generated, drives the reveal. */
+  roundJustGenerated: boolean
+  /** Transient: snapshot for undoing the most recent player removal. */
+  removalUndo: { players: Player[]; removedName: string } | null
 
   addPlayer: (name: string) => void
   renamePlayer: (id: string, name: string) => void
@@ -23,6 +27,9 @@ interface SessionState {
   endRound: () => void
   resetSession: () => void
   setActiveTab: (tab: TabKey) => void
+  consumeRoundReveal: () => void
+  undoRemovePlayer: () => void
+  clearRemovalUndo: () => void
 }
 
 function clearConstraint(p: Player): Player {
@@ -37,6 +44,8 @@ export const useStore = create<SessionState>()(
       rounds: [],
       generationError: null,
       activeTab: 'players',
+      roundJustGenerated: false,
+      removalUndo: null,
 
       addPlayer: (name) => {
         const trimmed = name.trim()
@@ -58,8 +67,10 @@ export const useStore = create<SessionState>()(
       },
 
       removePlayer: (id) => {
-        set((s) => ({
-          players: s.players
+        set((s) => {
+          const removed = s.players.find((p) => p.id === id)
+          if (!removed) return {}
+          const players = s.players
             .filter((p) => p.id !== id)
             .map((p) => {
               let next = p
@@ -70,8 +81,14 @@ export const useStore = create<SessionState>()(
                 next = { ...next, poolIds: next.poolIds.filter((x) => x !== id) }
               }
               return next
-            }),
-        }))
+            })
+          // Snapshot the whole roster so undo restores freed locked/pool links
+          // along with the player.
+          return {
+            players,
+            removalUndo: { players: s.players, removedName: removed.name },
+          }
+        })
       },
 
       setMode: (id, mode) => {
@@ -162,7 +179,12 @@ export const useStore = create<SessionState>()(
           sitoutIds: result.sitoutIds,
           locked: false,
         }
-        set({ rounds: [...rounds, round], generationError: null, activeTab: 'round' })
+        set({
+          rounds: [...rounds, round],
+          generationError: null,
+          activeTab: 'round',
+          roundJustGenerated: true,
+        })
       },
 
       setScore: (roundIndex, courtIndex, teamIndex, score) => {
@@ -200,6 +222,15 @@ export const useStore = create<SessionState>()(
       },
 
       setActiveTab: (tab) => set({ activeTab: tab }),
+
+      consumeRoundReveal: () => set({ roundJustGenerated: false }),
+
+      undoRemovePlayer: () =>
+        set((s) =>
+          s.removalUndo ? { players: s.removalUndo.players, removalUndo: null } : {},
+        ),
+
+      clearRemovalUndo: () => set({ removalUndo: null }),
     }),
     {
       name: 'court-shuffle-v1',
