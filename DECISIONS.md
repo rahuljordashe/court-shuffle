@@ -19,13 +19,18 @@ reasonable option.
 
 ## Session / generation
 
-- Default court count is **2**. Range 1–4, each court is doubles (4 players).
-- If players exceed court capacity, the lowest-priority extras sit out; players
-  with the fewest prior sit-outs are always chosen to play first, which keeps
-  sit-out counts even (spread 0–1).
+- Default court count is **2**, set with a stepper. Minimum 1, no upper limit;
+  each court is doubles (4 players). When the roster cannot fill every court the
+  generator quietly uses fewer, and the Courts caption says so.
+- The roster is one shared group; players are never tied to a specific court.
+  If the roster exceeds court capacity the extras sit out. Sit-out selection
+  benches units in strict order of prior sit-out count, so session totals stay
+  even (spread 0–1), and within a tier anyone who sat the previous round is
+  picked last, so nobody sits back-to-back unless it is unavoidable.
 - Generation is a **scored randomised search**: 2500 candidate rounds are built,
   hard constraints filter out infeasible candidates, and the best-scored survivor
-  is kept. Score priority: new partnerships >> new opponents >> sit-out spread.
+  is kept. Score priority: avoid back-to-back sit-outs >> new partnerships >>
+  new opponents >> sit-out spread.
 - "Generate Next Round" is disabled while a round is in progress; **End Round**
   must be pressed first. End Round locks the round's scores.
 

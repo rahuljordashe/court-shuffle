@@ -22,7 +22,14 @@ export async function addPlayers(page: Page, names: string[]): Promise<void> {
 
 export async function setCourts(page: Page, count: number): Promise<void> {
   await page.getByTestId('tab-players').click()
-  await page.getByTestId(`court-count-${count}`).click()
+  const value = page.getByTestId('court-count-value')
+  const current = async () => Number(await value.getAttribute('data-count'))
+  while ((await current()) < count) {
+    await page.getByTestId('court-count-inc').click()
+  }
+  while ((await current()) > count) {
+    await page.getByTestId('court-count-dec').click()
+  }
 }
 
 export async function setMode(

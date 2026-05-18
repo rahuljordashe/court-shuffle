@@ -9,9 +9,14 @@ import type { Court, Player, Round } from './types'
  * that cannot satisfy them are discarded rather than penalised.
  *
  * Scoring priority, highest first:
- *   1. Maximise never-before-paired partner combinations.
- *   2. Maximise never-before-faced opponent matchups.
- *   3. Minimise the spread of sit-out counts across the session.
+ *   1. Avoid back-to-back sit-outs (benching a player two rounds running).
+ *   2. Maximise never-before-paired partner combinations.
+ *   3. Maximise never-before-faced opponent matchups.
+ *   4. Minimise the spread of sit-out counts across the session.
+ *
+ * Sit-out fairness is also enforced during selection, not just scored: units
+ * are benched in strict order of prior sit-out count, so session totals stay
+ * even, and within a tier players who sat the previous round are picked last.
  */
 
 function pairKey(a: string, b: string): string {
@@ -22,6 +27,8 @@ interface Stats {
   partner: Record<string, number>
   opponent: Record<string, number>
   sitout: Record<string, number>
+  /** Players who sat out the most recent round (used to avoid repeats). */
+  lastSitout: Set<string>
 }
 
 function buildStats(players: Player[], rounds: Round[]): Stats {
@@ -47,7 +54,9 @@ function buildStats(players: Player[], rounds: Round[]): Stats {
       }
     }
   }
-  return { partner, opponent, sitout }
+  const lastRound = rounds[rounds.length - 1]
+  const lastSitout = new Set<string>(lastRound ? lastRound.sitoutIds : [])
+  return { partner, opponent, sitout, lastSitout }
 }
 
 function shuffle<T>(arr: T[]): T[] {
@@ -163,12 +172,16 @@ function buildAttempt(
   sitoutCount: number,
   stats: Stats,
 ): Attempt | null {
-  // Choose sit-out units. Players with the fewest prior sit-outs sit first,
-  // which keeps sit-outs distributed as evenly as possible.
+  // Choose sit-out units. The key is layered so sit-out fairness is enforced,
+  // not merely scored: the prior sit-out count dominates (fewest sit first, so
+  // session totals stay even), then players who sat the previous round are
+  // pushed to the back of their tier (no back-to-back unless forced), then a
+  // random term breaks remaining ties so partnerships still vary.
   const ordered = units
     .map((u) => {
       const avg = u.ids.reduce((s, id) => s + (stats.sitout[id] ?? 0), 0) / u.ids.length
-      return { u, key: avg + Math.random() * 0.5 }
+      const repeat = u.ids.some((id) => stats.lastSitout.has(id)) ? 1 : 0
+      return { u, key: avg * 1000 + repeat * 10 + Math.random() }
     })
     .sort((a, b) => a.key - b.key)
 
@@ -313,5 +326,11 @@ function scoreRound(courts: Court[], sitoutIds: string[], stats: Stats): number 
   const sitset = new Set(sitoutIds)
   const counts = Object.entries(stats.sitout).map(([id, c]) => (sitset.has(id) ? c + 1 : c))
   const spread = counts.length > 0 ? Math.max(...counts) - Math.min(...counts) : 0
-  return partnerTerm * 100000 + opponentTerm * 100 - spread
+  // Back-to-back sit-outs outrank every other objective: a round that benches
+  // anyone two rounds running loses to any round that does not.
+  let backToBack = 0
+  for (const id of sitoutIds) {
+    if (stats.lastSitout.has(id)) backToBack += 1
+  }
+  return backToBack * -1e9 + partnerTerm * 100000 + opponentTerm * 100 - spread
 }

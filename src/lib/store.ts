@@ -138,7 +138,9 @@ export const useStore = create<SessionState>()(
       },
 
       setCourtCount: (count) => {
-        const clamped = Math.max(1, Math.min(4, Math.round(count)))
+        // Minimum 1 court, no upper limit; the generator uses fewer courts than
+        // requested when the roster cannot fill them all.
+        const clamped = Math.max(1, Math.round(count))
         set({ courtCount: clamped })
       },
 

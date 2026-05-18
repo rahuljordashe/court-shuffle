@@ -9,3 +9,4 @@ playwright/.cache
 public/icon-192.png
 public/icon-512.png
 public/maskable-512.png
+.vercel

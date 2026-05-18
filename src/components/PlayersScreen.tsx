@@ -16,33 +16,60 @@ export function PlayersScreen() {
     setName('')
   }
 
+  const total = players.length
+  const playingCount = Math.min(courtCount * 4, Math.floor(total / 4) * 4)
+  const sitoutCount = total - playingCount
+  const courtsUsed = playingCount / 4
+
+  let courtSummary: string
+  if (total < 4) {
+    courtSummary = 'Add at least 4 players to start a round'
+  } else if (courtsUsed < courtCount) {
+    const tail = sitoutCount === 0 ? 'everyone plays' : `${sitoutCount} rotate out`
+    courtSummary = `${total} players fill ${courtsUsed} of ${courtCount} courts · ${tail}`
+  } else if (sitoutCount === 0) {
+    courtSummary = `${total} players · everyone plays every round`
+  } else {
+    courtSummary = `${total} players · ${playingCount} play, ${sitoutCount} rotate out each round`
+  }
+
   return (
     <div className="space-y-9 pt-6">
       <section className="space-y-3">
         <SectionLabel>Courts</SectionLabel>
-        <div className="grid grid-cols-4 gap-2">
-          {[1, 2, 3, 4].map((n) => {
-            const on = courtCount === n
-            return (
-              <button
-                key={n}
-                data-testid={`court-count-${n}`}
-                onClick={() => setCourtCount(n)}
-                className={cn(
-                  'flex h-14 items-center justify-center rounded-md border text-2xl font-extrabold tabular-nums transition-colors duration-150',
-                  on
-                    ? 'border-ink bg-ink text-paper'
-                    : 'border-rule bg-raised text-ink-faint',
-                )}
-              >
-                {n}
-              </button>
-            )
-          })}
+        <div className="flex items-stretch gap-2">
+          <button
+            data-testid="court-count-dec"
+            aria-label="Remove a court"
+            onClick={() => setCourtCount(courtCount - 1)}
+            disabled={courtCount <= 1}
+            className={cn(
+              'flex h-16 w-16 shrink-0 items-center justify-center rounded-md border text-3xl font-extrabold transition-colors duration-150',
+              courtCount <= 1
+                ? 'border-rule bg-raised text-ink-faint/40'
+                : 'border-rule bg-raised text-ink active:bg-ink active:text-paper',
+            )}
+          >
+            &minus;
+          </button>
+          <div
+            data-testid="court-count-value"
+            data-count={courtCount}
+            className="flex h-16 flex-1 items-center justify-center rounded-md border border-ink bg-ink text-4xl font-extrabold tabular-nums text-paper"
+          >
+            {courtCount}
+          </div>
+          <button
+            data-testid="court-count-inc"
+            aria-label="Add a court"
+            onClick={() => setCourtCount(courtCount + 1)}
+            className="flex h-16 w-16 shrink-0 items-center justify-center rounded-md border border-rule bg-raised text-3xl font-extrabold text-ink transition-colors duration-150 active:bg-ink active:text-paper"
+          >
+            +
+          </button>
         </div>
         <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-ink-faint">
-          {courtCount} {courtCount === 1 ? 'court' : 'courts'} &middot; up to{' '}
-          {courtCount * 4} players per round
+          {courtSummary}
         </p>
       </section>
 
