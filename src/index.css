@@ -47,13 +47,19 @@ input[type="number"] {
    Motion — "Deal". Matchups arrive like cards off the deck: courts and
    standings deal in with a slight tilt that settles flat, the winner's wash
    wipes across the row, the court count rolls, toasts slide in like a card
-   laid on the table. Decelerating easings only; nothing overshoots.
+   laid on the table. Reveal motion uses decelerating easings only and never
+   overshoots; the soft spring further down — used solely for the controls a
+   hand touches — is the one deliberate exception.
    The prefers-reduced-motion block below collapses every one of these to an
    instant state change.
    ------------------------------------------------------------------------ */
 :root {
   --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  /* A soft spring: one ~4% overshoot, then it settles. Sampled from a damped
+     oscillator (damping ratio 0.72) as a CSS linear() easing. Used only for
+     direct-manipulation feedback — the tab slide, press-backs, the chip tick. */
+  --spring-soft: linear(0.0000 0.0%, 0.0189 2.3%, 0.0685 4.5%, 0.1390 6.8%, 0.2227 9.1%, 0.3130 11.4%, 0.4052 13.6%, 0.4953 15.9%, 0.5806 18.2%, 0.6593 20.5%, 0.7303 22.7%, 0.7928 25.0%, 0.8469 27.3%, 0.8928 29.5%, 0.9308 31.8%, 0.9616 34.1%, 0.9859 36.4%, 1.0045 38.6%, 1.0183 40.9%, 1.0278 43.2%, 1.0339 45.5%, 1.0373 47.7%, 1.0384 50.0%, 1.0379 52.3%, 1.0361 54.5%, 1.0335 56.8%, 1.0303 59.1%, 1.0269 61.4%, 1.0233 63.6%, 1.0198 65.9%, 1.0165 68.2%, 1.0135 70.5%, 1.0107 72.7%, 1.0083 75.0%, 1.0061 77.3%, 1.0043 79.5%, 1.0028 81.8%, 1.0016 84.1%, 1.0007 86.4%, 0.9999 88.6%, 0.9994 90.9%, 0.9990 93.2%, 0.9987 95.5%, 0.9986 97.7%, 1.0000 100.0%);
 }
 
 /* Court blocks and leaderboard rows: dealt down from the deck. */
@@ -68,7 +74,7 @@ input[type="number"] {
   }
 }
 .deal-in {
-  animation: deal-in 300ms var(--ease-out-quint) both;
+  animation: deal-in 460ms var(--ease-out-quint) both;
 }
 
 /* Winner: the signal wash wipes across the row, left to right. */
@@ -143,6 +149,49 @@ input[type="number"] {
 
 .live-dot {
   animation: live-pulse 2.4s ease-in-out infinite;
+}
+
+/* ------------------------------------------------------------------------
+   Spring — direct-manipulation feedback. A single soft spring (one ~4%
+   overshoot, then it settles) on the controls the organizer touches: the
+   bottom-nav indicator slides under the active tab, buttons and the stepper
+   press back under the finger, the pool chip ticks on toggle. This is the
+   one place motion is allowed to overshoot, and only just.
+   ------------------------------------------------------------------------ */
+
+/* Bottom-nav: the signal indicator slides under the active tab. */
+.tab-indicator {
+  transition: transform 480ms var(--spring-soft);
+}
+
+/* Press-back: a control dips fast under the finger, then springs to rest. */
+.spring-press {
+  transition:
+    transform 480ms var(--spring-soft),
+    background-color 150ms var(--ease-out-quart),
+    border-color 150ms var(--ease-out-quart),
+    color 150ms var(--ease-out-quart);
+}
+.spring-press:active {
+  transform: scale(0.94);
+  transition:
+    transform 110ms var(--ease-out-quart),
+    background-color 100ms var(--ease-out-quart),
+    border-color 100ms var(--ease-out-quart),
+    color 100ms var(--ease-out-quart);
+}
+
+/* Pool chip: a scale tick on toggle, springing back through rest. */
+@keyframes chip-tick {
+  from {
+    transform: scale(0.82);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+.chip-tick {
+  animation: chip-tick 480ms var(--spring-soft);
 }
 
 @media (prefers-reduced-motion: reduce) {

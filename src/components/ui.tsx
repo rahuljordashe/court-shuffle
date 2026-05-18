@@ -27,7 +27,7 @@ export function Button({ variant = 'signal', className, ...props }: ButtonProps)
     <button
       className={cn(
         'inline-flex min-h-12 select-none items-center justify-center gap-2 rounded-md px-4',
-        'text-sm font-extrabold uppercase tracking-[0.09em] transition-colors duration-150',
+        'spring-press text-sm font-extrabold uppercase tracking-[0.09em]',
         'disabled:cursor-not-allowed disabled:opacity-45',
         variantClasses[variant],
         className,

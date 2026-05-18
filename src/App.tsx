@@ -16,6 +16,10 @@ export default function App() {
   const activeTab = useStore((s) => s.activeTab)
   const setActiveTab = useStore((s) => s.setActiveTab)
   const playerCount = useStore((s) => s.players.length)
+  const activeIndex = Math.max(
+    0,
+    TABS.findIndex((t) => t.key === activeTab),
+  )
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-md flex-col bg-paper">
@@ -38,6 +42,14 @@ export default function App() {
       </main>
 
       <nav className="fixed inset-x-0 bottom-0 z-10 mx-auto flex max-w-md border-t-2 border-ink bg-paper pb-[env(safe-area-inset-bottom)]">
+        <span
+          aria-hidden="true"
+          className="tab-indicator absolute left-0 top-0 h-[3px] bg-signal"
+          style={{
+            width: `calc(100% / ${TABS.length})`,
+            transform: `translateX(${activeIndex * 100}%)`,
+          }}
+        />
         {TABS.map((t) => {
           const on = activeTab === t.key
           return (
@@ -48,7 +60,7 @@ export default function App() {
               onClick={() => setActiveTab(t.key)}
               className="flex flex-1 flex-col items-center"
             >
-              <span className={cn('h-[3px] w-full', on ? 'bg-signal' : 'bg-transparent')} />
+              <span aria-hidden="true" className="h-[3px] w-full" />
               <span
                 className={cn(
                   'py-3.5 text-[11px] font-extrabold uppercase tracking-[0.13em] transition-colors duration-150',

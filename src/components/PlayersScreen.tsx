@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useStore } from '@/lib/store'
 import type { ConstraintMode, Player } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -44,7 +44,7 @@ export function PlayersScreen() {
             onClick={() => setCourtCount(courtCount - 1)}
             disabled={courtCount <= 1}
             className={cn(
-              'flex h-16 w-16 shrink-0 items-center justify-center rounded-md border text-3xl font-extrabold transition-colors duration-150',
+              'spring-press flex h-16 w-16 shrink-0 items-center justify-center rounded-md border text-3xl font-extrabold',
               courtCount <= 1
                 ? 'border-rule bg-raised text-ink-faint/40'
                 : 'border-rule bg-raised text-ink active:bg-ink active:text-paper',
@@ -63,7 +63,7 @@ export function PlayersScreen() {
             data-testid="court-count-inc"
             aria-label="Add a court"
             onClick={() => setCourtCount(courtCount + 1)}
-            className="flex h-16 w-16 shrink-0 items-center justify-center rounded-md border border-rule bg-raised text-3xl font-extrabold text-ink transition-colors duration-150 active:bg-ink active:text-paper"
+            className="spring-press flex h-16 w-16 shrink-0 items-center justify-center rounded-md border border-rule bg-raised text-3xl font-extrabold text-ink active:bg-ink active:text-paper"
           >
             +
           </button>
@@ -204,26 +204,14 @@ function PlayerRow({ player, all }: { player: Player; all: Player[] }) {
             Pool partners
           </p>
           <div className="flex flex-wrap gap-1.5">
-            {others.map((o) => {
-              const selected = player.poolIds.includes(o.id)
-              return (
-                <button
-                  key={o.id}
-                  data-testid="pool-option"
-                  data-name={o.name}
-                  data-selected={selected}
-                  onClick={() => togglePoolMember(player.id, o.id)}
-                  className={cn(
-                    'min-h-11 rounded border px-2.5 text-xs font-bold uppercase tracking-[0.04em] transition-colors duration-150',
-                    selected
-                      ? 'border-ink bg-ink text-paper'
-                      : 'border-rule bg-paper text-ink-soft',
-                  )}
-                >
-                  {o.name}
-                </button>
-              )
-            })}
+            {others.map((o) => (
+              <PoolChip
+                key={o.id}
+                name={o.name}
+                selected={player.poolIds.includes(o.id)}
+                onClick={() => togglePoolMember(player.id, o.id)}
+              />
+            ))}
           </div>
           {player.poolIds.length < 2 && (
             <p
@@ -236,6 +224,52 @@ function PlayerRow({ player, all }: { player: Player; all: Player[] }) {
         </div>
       )}
     </li>
+  )
+}
+
+/**
+ * A pool-partner toggle chip. On toggle it ticks with a soft spring — but not
+ * on first render, so opening the pool list never animates unprompted.
+ */
+function PoolChip({
+  name,
+  selected,
+  onClick,
+}: {
+  name: string
+  selected: boolean
+  onClick: () => void
+}) {
+  const ref = useRef<HTMLButtonElement>(null)
+  const mounted = useRef(false)
+
+  useEffect(() => {
+    if (!mounted.current) {
+      mounted.current = true
+      return
+    }
+    const el = ref.current
+    if (!el) return
+    // Restart the tick: drop the class, force a reflow, re-add it.
+    el.classList.remove('chip-tick')
+    void el.offsetWidth
+    el.classList.add('chip-tick')
+  }, [selected])
+
+  return (
+    <button
+      ref={ref}
+      data-testid="pool-option"
+      data-name={name}
+      data-selected={selected}
+      onClick={onClick}
+      className={cn(
+        'min-h-11 rounded border px-2.5 text-xs font-bold uppercase tracking-[0.04em] transition-colors duration-150',
+        selected ? 'border-ink bg-ink text-paper' : 'border-rule bg-paper text-ink-soft',
+      )}
+    >
+      {name}
+    </button>
   )
 }
 

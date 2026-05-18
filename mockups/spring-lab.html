@@ -1,0 +1,648 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Court Shuffle · Spring Lab</title>
+<style>
+  /* ---- Court Shuffle tokens ------------------------------------------ */
+  :root{
+    --paper:oklch(0.98 0.007 78);
+    --raised:oklch(0.995 0.003 80);
+    --sunk:oklch(0.955 0.009 78);
+    --ink:oklch(0.235 0.014 62);
+    --ink-soft:oklch(0.505 0.016 62);
+    --ink-faint:oklch(0.66 0.014 62);
+    --rule:oklch(0.235 0.014 62 / 0.16);
+    --signal:oklch(0.535 0.205 34);
+    --signal-deep:oklch(0.46 0.185 34);
+    --signal-wash:oklch(0.955 0.035 46);
+    --on-signal:oklch(0.99 0.014 78);
+    /* workbench surround — desk-side tool, not the courtside app */
+    --bench:oklch(0.30 0.014 64);
+    --bench-soft:oklch(0.38 0.013 64);
+    --bench-line:oklch(0.99 0.01 78 / 0.14);
+    --bench-ink:oklch(0.96 0.012 78);
+    --bench-faint:oklch(0.78 0.012 78);
+    --e-quart:cubic-bezier(0.25,1,0.5,1);
+    --e-quint:cubic-bezier(0.22,1,0.36,1);
+    --e-expo:cubic-bezier(0.16,1,0.3,1);
+    /* spring easings + durations are filled in by JS at load (see script) */
+    font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    background:var(--bench);color:var(--bench-ink);
+    -webkit-font-smoothing:antialiased;padding:0 0 90px;
+  }
+
+  /* ---- masthead ------------------------------------------------------ */
+  .masthead{max-width:1180px;margin:0 auto;padding:40px 28px 20px;}
+  .kicker{
+    font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.22em;
+    color:var(--signal);
+  }
+  .masthead h1{
+    font-size:30px;font-weight:800;letter-spacing:-0.02em;line-height:1.1;margin-top:8px;
+  }
+  .masthead h1 .sl{color:var(--signal);}
+  .masthead p{
+    margin-top:12px;max-width:74ch;font-size:14px;line-height:1.6;color:var(--bench-faint);
+  }
+  .masthead p b{color:var(--bench-ink);font-weight:700;}
+  .masthead p code{
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;
+    background:var(--bench-soft);padding:1px 5px;border-radius:4px;color:var(--bench-ink);
+  }
+
+  /* ---- control bar --------------------------------------------------- */
+  .controls{
+    position:sticky;top:0;z-index:50;
+    background:oklch(0.30 0.014 64 / 0.94);backdrop-filter:blur(8px);
+    border-top:1px solid var(--bench-line);border-bottom:1px solid var(--bench-line);
+  }
+  .controls-in{
+    max-width:1180px;margin:0 auto;padding:12px 28px;
+    display:flex;flex-wrap:wrap;gap:10px;align-items:center;
+  }
+  .ctl-label{
+    font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.16em;
+    color:var(--bench-faint);
+  }
+  button.moment{
+    appearance:none;cursor:pointer;height:38px;padding:0 16px;
+    background:var(--signal);border:1px solid var(--signal);color:var(--on-signal);
+    border-radius:6px;
+    font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;
+    transition:background .14s var(--e-quart),transform .08s var(--e-expo);
+  }
+  button.moment:hover{background:var(--signal-deep);border-color:var(--signal-deep);}
+  button.moment:active{transform:scale(0.96);}
+  .spacer{flex:1;}
+  .rm-toggle{
+    display:flex;align-items:center;gap:8px;
+    font-size:11px;font-weight:700;color:var(--bench-faint);cursor:pointer;user-select:none;
+  }
+  .rm-toggle input{width:16px;height:16px;accent-color:var(--signal);cursor:pointer;}
+
+  /* ---- sheet --------------------------------------------------------- */
+  .sheet{max-width:1180px;margin:8px auto 0;padding:0 28px;}
+
+  .place{
+    margin-top:26px;padding-top:22px;border-top:1px solid var(--bench-line);
+  }
+  .place:first-child{border-top:0;}
+  .place-head{display:flex;align-items:baseline;gap:10px;}
+  .pnum{
+    font-size:12px;font-weight:800;color:var(--signal);font-variant-numeric:tabular-nums;
+  }
+  .pname{font-size:17px;font-weight:800;letter-spacing:-0.01em;}
+  .pmaps{
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+    font-size:11px;color:var(--bench-faint);
+  }
+  .fire{
+    margin-left:auto;appearance:none;cursor:pointer;height:32px;padding:0 13px;
+    background:var(--bench-soft);border:1px solid var(--bench-line);
+    color:var(--bench-ink);border-radius:6px;
+    font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;
+    transition:background .14s,border-color .14s,transform .08s var(--e-expo);
+  }
+  .fire:hover{background:oklch(0.44 0.013 64);border-color:oklch(0.99 0.01 78 / 0.3);}
+  .fire:active{transform:scale(0.95);}
+  .place-note{
+    margin-top:7px;max-width:80ch;font-size:13px;line-height:1.55;color:var(--bench-faint);
+  }
+  .place-note b{color:var(--bench-ink);font-weight:700;}
+
+  .trio{
+    margin-top:16px;display:grid;gap:18px;grid-template-columns:repeat(3,1fr);
+  }
+  @media(max-width:820px){.trio{grid-template-columns:1fr;}}
+
+  .variant{display:flex;flex-direction:column;}
+  .vlabel{
+    display:flex;align-items:baseline;gap:8px;margin-bottom:9px;
+  }
+  .vlabel .vl-name{
+    font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;
+    color:var(--bench-ink);
+  }
+  .vlabel .vl-sub{font-size:11px;color:var(--bench-faint);}
+
+  /* the demo surface — a slice of the real courtside app (paper) */
+  .demo{
+    background:var(--paper);color:var(--ink);
+    border-radius:14px;padding:18px 16px;
+    box-shadow:0 14px 32px -16px oklch(0 0 0 / 0.55);
+    display:flex;flex-direction:column;gap:10px;
+    min-height:118px;justify-content:center;
+  }
+  .demo-hint{
+    font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;
+    color:var(--ink-faint);text-align:center;
+  }
+
+  /* =================================================================== */
+  /*  PLACE 1 — bottom-nav tab indicator                                  */
+  /* =================================================================== */
+  .navbar{
+    position:relative;display:flex;
+    border-top:2px solid var(--ink);background:var(--paper);
+  }
+  .navtab{
+    flex:1;appearance:none;cursor:pointer;background:transparent;border:0;
+    padding:13px 0 12px;
+    font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.13em;
+    color:var(--ink-faint);transition:color .15s var(--e-quart);
+  }
+  .navtab.on{color:var(--ink);}
+  .nav-ind{
+    position:absolute;top:0;left:0;height:3px;background:var(--signal);
+    transition:transform var(--dur) var(--spring), width var(--dur) var(--spring);
+  }
+
+  /* =================================================================== */
+  /*  PLACE 2 — court-count stepper (press spring-back)                   */
+  /* =================================================================== */
+  .stepper{display:flex;gap:7px;}
+  .step{
+    width:54px;height:54px;flex:none;appearance:none;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    background:var(--raised);border:1px solid var(--rule);border-radius:6px;
+    font-size:26px;font-weight:800;color:var(--ink);
+    transition:transform var(--dur) var(--spring),background .12s var(--e-quart);
+  }
+  .step:active,.step.pressed{
+    transform:scale(0.90);background:var(--ink);color:var(--paper);
+    transition:transform 110ms var(--e-quart),background .1s;
+  }
+  .digit-box{
+    flex:1;height:54px;display:flex;align-items:center;justify-content:center;
+    background:var(--ink);border-radius:6px;overflow:hidden;
+  }
+  .digit{
+    font-size:30px;font-weight:800;color:var(--paper);
+    font-variant-numeric:tabular-nums;line-height:1;display:inline-block;
+  }
+  @keyframes digit-bump{from{transform:scale(0.72);}to{transform:scale(1);}}
+  .digit.bump{animation:digit-bump var(--dur) var(--spring);}
+
+  /* =================================================================== */
+  /*  PLACE 3 — hero button (press spring-back)                           */
+  /* =================================================================== */
+  .hero{
+    appearance:none;cursor:pointer;width:100%;height:54px;
+    display:flex;align-items:center;justify-content:center;gap:9px;
+    background:var(--signal);color:var(--on-signal);
+    border:1px solid var(--signal);border-radius:6px;
+    font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;
+    transition:transform var(--dur) var(--spring),background .14s var(--e-quart);
+  }
+  .hero:hover{background:var(--signal-deep);}
+  .hero:active,.hero.pressed{
+    transform:scale(0.95);transition:transform 120ms var(--e-quart);
+  }
+
+  /* =================================================================== */
+  /*  PLACE 4 — pool chips (toggle spring tick)                           */
+  /* =================================================================== */
+  .chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;}
+  .chip{
+    appearance:none;cursor:pointer;min-height:44px;padding:0 14px;
+    border:1px solid var(--rule);border-radius:5px;background:var(--paper);
+    font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;
+    color:var(--ink-soft);
+    transition:background .14s var(--e-quart),border-color .14s var(--e-quart),color .14s var(--e-quart);
+  }
+  .chip.on{background:var(--ink);border-color:var(--ink);color:var(--paper);}
+  @keyframes chip-tick{from{transform:scale(0.82);}to{transform:scale(1);}}
+  .chip.tick{animation:chip-tick var(--dur) var(--spring);}
+
+  /* =================================================================== */
+  /*  PLACE 5 — round-reveal pacing  (NOT a spring — deal-in, decelerating)*/
+  /* =================================================================== */
+  .mini{display:flex;flex-direction:column;gap:7px;width:100%;}
+  .m-title{
+    display:flex;align-items:baseline;justify-content:space-between;
+    border-bottom:2px solid var(--ink);padding-bottom:5px;
+  }
+  .m-title b{font-size:18px;font-weight:800;letter-spacing:-0.02em;}
+  .m-title b .rn{font-variant-numeric:tabular-nums;}
+  .m-title .st{
+    display:flex;align-items:center;gap:5px;
+    font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;
+    color:var(--signal);
+  }
+  .m-title .ld{width:6px;height:6px;border-radius:999px;background:var(--signal);}
+  .m-court{
+    border:1px solid var(--rule);border-radius:6px;background:var(--raised);overflow:hidden;
+  }
+  .m-court .ct{
+    padding:5px 9px;border-bottom:1px solid var(--rule);
+    font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:.18em;
+    color:var(--ink-soft);
+  }
+  .m-court .tm{font-size:12px;font-weight:700;color:var(--ink);padding:7px 9px;}
+  .m-court .tm + .tm{border-top:1px solid var(--rule);}
+  .m-sitouts{
+    display:flex;gap:6px;align-items:baseline;
+    border-top:1px solid var(--rule);padding-top:7px;
+  }
+  .m-sitouts .so-l{
+    font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:.14em;
+    color:var(--ink-soft);
+  }
+  .m-sitouts .so-n{font-size:11px;font-weight:700;color:var(--ink);}
+
+  @keyframes deal-in{
+    from{opacity:0;transform:translateY(-16px) rotate(-2.5deg);}
+    to{opacity:1;transform:translateY(0) rotate(0);}
+  }
+  .mini .stage.run{
+    animation:deal-in var(--deal-dur) var(--e-quint) backwards;
+    animation-delay:calc(var(--i) * var(--deal-stag));
+  }
+
+  /* ---- variant tokens ------------------------------------------------ */
+  .spring-damped{--spring:var(--sp-damped);--dur:340ms;}
+  .spring-soft  {--spring:var(--sp-soft);  --dur:480ms;}
+  .spring-lively{--spring:var(--sp-lively);--dur:580ms;}
+  .pace-current {--deal-dur:300ms;--deal-stag:55ms;}
+  .pace-relaxed {--deal-dur:380ms;--deal-stag:85ms;}
+  .pace-slow    {--deal-dur:460ms;--deal-stag:120ms;}
+
+  /* ---- reduced motion ------------------------------------------------ */
+  .lab.reduced .demo, .lab.reduced .demo *{
+    animation-duration:1ms !important;animation-delay:0ms !important;
+    transition-duration:1ms !important;
+  }
+  @media(prefers-reduced-motion:reduce){
+    .demo,.demo *{animation-duration:1ms !important;transition-duration:1ms !important;}
+  }
+
+  /* ---- footnote ------------------------------------------------------ */
+  .footnote{
+    max-width:1180px;margin:36px auto 0;padding:0 28px;
+    font-size:13px;line-height:1.65;color:var(--bench-faint);
+  }
+  .footnote b{color:var(--bench-ink);}
+  .rec{
+    margin-top:14px;padding:16px 18px;
+    background:var(--bench-soft);border:1px solid var(--bench-line);border-radius:8px;
+    font-size:13px;line-height:1.7;color:var(--bench-ink);
+  }
+  .rec .rk-tag{
+    font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.16em;
+    color:var(--signal);display:block;margin-bottom:7px;
+  }
+  .rec ul{margin:6px 0 0 18px;}
+  .rec li{margin:3px 0;}
+</style>
+</head>
+<body>
+<div class="lab" id="lab">
+
+  <header class="masthead">
+    <div class="kicker">Court Shuffle · Spring Lab</div>
+    <h1>Springs, four places &mdash; pick a strength for each<span class="sl">.</span></h1>
+    <p>
+      The &ldquo;Deal&rdquo; motion system in <code>index.css</code> bans overshoot on purpose
+      (&ldquo;<i>nothing overshoots</i>&rdquo;), and the brief lists a bouncy app as an
+      anti-reference. So every spring here ships in <b>three strengths</b>:
+      <b>Damped</b> (a spring with no visible bounce &mdash; safe everywhere),
+      <b>Soft</b> (one gentle overshoot &mdash; tactile), and
+      <b>Lively</b> (a pronounced overshoot &mdash; the edge of on-brand).
+      Springs are pure CSS <code>linear()</code> easings generated at load &mdash; no
+      library, no bundle cost, and they collapse correctly under reduced motion.
+      <b>Drive every demo directly</b> (tap a tab, a stepper, the button, a chip),
+      or use the row's &ldquo;Fire row&rdquo; to play all three in sync.
+      Section&nbsp;5 answers the &ldquo;<b>generate feels too quick</b>&rdquo; question &mdash;
+      that one is a pacing fix, not a spring.
+    </p>
+  </header>
+
+  <div class="controls">
+    <div class="controls-in">
+      <span class="ctl-label">Compare</span>
+      <button class="moment" id="fire-all">&#9658; Trigger every row</button>
+      <span class="spacer"></span>
+      <label class="rm-toggle">
+        <input type="checkbox" id="rm" />
+        Simulate reduced motion
+      </label>
+    </div>
+  </div>
+
+  <main class="sheet" id="sheet"></main>
+
+  <div class="footnote">
+    <b>How to read this:</b> Damped is a real spring tuned to critical damping &mdash;
+    it never crosses its target, so it is courtside-safe on any control. Soft and
+    Lively cross once and settle. Reduced motion (toggle above) collapses all of
+    them to an instant state change. None of this touches the app's
+    <code>data-testid</code> hooks &mdash; it is transform and easing only.
+    <div class="rec">
+      <span class="rk-tag">My recommendation &mdash; tell me if you disagree</span>
+      <ul>
+        <li><b>1 · Tab indicator → Soft.</b> Motion is missing here entirely; a slide
+          wants a little life. Damped reads as plain ease; Lively bounces the
+          most-seen control in the app.</li>
+        <li><b>2 · Stepper → Soft.</b> Direct manipulation &mdash; a small spring-back
+          under the thumb feels tactile and earned.</li>
+        <li><b>3 · Hero button → Damped.</b> Generate / End Round is the
+          referee's-whistle action. It should feel decisive, not playful. A
+          firm spring-back, no bounce.</li>
+        <li><b>4 · Pool chips → Soft.</b> A toggle tick with one overshoot reads as
+          a confident <i>click</i>.</li>
+        <li><b>5 · Round reveal → Relaxed.</b> The real fix is not just slower
+          cards &mdash; it is pulling the title and sit-outs <i>into</i> the stagger so
+          the whole round assembles instead of two cards flickering.</li>
+      </ul>
+      Pick a column per row, then I'll wire your choices into the app
+      (<code>index.css</code> + the four components) and run the Playwright suite.
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ===================================================================== */
+/*  Court Shuffle — Spring Lab                                           */
+/* ===================================================================== */
+const lab   = document.getElementById('lab');
+const sheet = document.getElementById('sheet');
+
+/* ---- spring → CSS linear() easing ----------------------------------- *
+ * Step response of a damped harmonic oscillator, sampled to a linear()
+ * easing. zeta = damping ratio: 1 is critically damped (no overshoot),
+ * below 1 overshoots once and settles. This same string is what would
+ * go into index.css as a static --spring-* token.                       */
+function springCurve(zeta, omega){
+  const n = 44, pts = [];
+  for(let i=0;i<=n;i++){
+    const t = i/n;
+    let p;
+    if(zeta >= 1){
+      p = 1 - Math.exp(-omega*t) * (1 + omega*t);          /* critically damped */
+    }else{
+      const wd = omega * Math.sqrt(1 - zeta*zeta);          /* damped frequency */
+      p = 1 - Math.exp(-zeta*omega*t) *
+            (Math.cos(wd*t) + (zeta*omega/wd) * Math.sin(wd*t));
+    }
+    pts.push(p);
+  }
+  pts[0] = 0; pts[n] = 1;                                   /* exact start + land */
+  return 'linear(' +
+    pts.map((v,i)=>v.toFixed(4)+' '+(i/n*100).toFixed(1)+'%').join(', ') + ')';
+}
+const rootStyle = document.documentElement.style;
+rootStyle.setProperty('--sp-damped', springCurve(1.00, 8));   /* no overshoot     */
+rootStyle.setProperty('--sp-soft',   springCurve(0.72, 9));   /* ~4% overshoot    */
+rootStyle.setProperty('--sp-lively', springCurve(0.55, 9));   /* ~13% overshoot   */
+
+/* ---- helpers -------------------------------------------------------- */
+function el(html){
+  const t = document.createElement('template');
+  t.innerHTML = html.trim();
+  return t.content.firstElementChild;
+}
+function restart(node, cls){
+  node.classList.remove(cls);
+  void node.offsetWidth;
+  node.classList.add(cls);
+}
+
+const SPRINGS = [
+  { key:'damped', name:'Damped', sub:'no overshoot' },
+  { key:'soft',   name:'Soft',   sub:'one gentle overshoot' },
+  { key:'lively', name:'Lively', sub:'pronounced overshoot' },
+];
+const PACES = [
+  { key:'current', name:'Current', sub:'300ms · 55ms · cards only' },
+  { key:'relaxed', name:'Relaxed', sub:'380ms · 85ms · whole round' },
+  { key:'slow',    name:'Slow',    sub:'460ms · 120ms · whole round' },
+];
+
+/* ===================================================================== */
+/*  PLACE 1 — bottom-nav tab indicator                                   */
+/* ===================================================================== */
+function buildTabs(){
+  const wrap = el(`
+    <div class="navbar">
+      <button class="navtab on">Players</button>
+      <button class="navtab">Round</button>
+      <button class="navtab">Leaders</button>
+      <span class="nav-ind"></span>
+    </div>`);
+  const tabs = [...wrap.querySelectorAll('.navtab')];
+  const ind  = wrap.querySelector('.nav-ind');
+  let active = 0;
+
+  function position(animate){
+    const t = tabs[active];
+    if(!animate){ ind.style.transition = 'none'; }
+    ind.style.width = t.offsetWidth + 'px';
+    ind.style.transform = 'translateX(' + t.offsetLeft + 'px)';
+    if(!animate){ void ind.offsetWidth; ind.style.transition = ''; }
+  }
+  function select(i){
+    if(i === active) i = (active + 1) % tabs.length;       /* re-tap advances */
+    tabs[active].classList.remove('on');
+    active = i;
+    tabs[active].classList.add('on');
+    position(true);
+  }
+  tabs.forEach((t,i)=>t.addEventListener('click',()=>select(i)));
+  new ResizeObserver(()=>position(false)).observe(wrap);
+
+  return { el:wrap, relayout:()=>position(false), fire:()=>select((active+1)%tabs.length) };
+}
+
+/* ===================================================================== */
+/*  PLACE 2 — court-count stepper                                        */
+/* ===================================================================== */
+function buildStepper(){
+  const wrap = el(`
+    <div class="stepper">
+      <button class="step" data-d="-1" aria-label="Remove a court">&minus;</button>
+      <div class="digit-box"><span class="digit">2</span></div>
+      <button class="step" data-d="1" aria-label="Add a court">+</button>
+    </div>`);
+  const digit = wrap.querySelector('.digit');
+  let v = 2;
+
+  function step(d, btn){
+    v = Math.max(1, v + d);
+    digit.textContent = v;
+    restart(digit, 'bump');
+    btn.classList.add('pressed');
+    setTimeout(()=>btn.classList.remove('pressed'), 110);
+  }
+  wrap.querySelectorAll('.step').forEach(b=>{
+    b.addEventListener('click',()=>step(Number(b.dataset.d), b));
+  });
+  return {
+    el:wrap,
+    fire:()=>step(1, wrap.querySelector('.step[data-d="1"]')),
+  };
+}
+
+/* ===================================================================== */
+/*  PLACE 3 — hero button                                                */
+/* ===================================================================== */
+function buildHero(){
+  const btn = el(`<button class="hero">Generate next round <span aria-hidden="true">&rarr;</span></button>`);
+  function press(){
+    btn.classList.add('pressed');
+    setTimeout(()=>btn.classList.remove('pressed'), 120);
+  }
+  btn.addEventListener('click', press);
+  return { el:btn, fire:press };
+}
+
+/* ===================================================================== */
+/*  PLACE 4 — pool chips                                                 */
+/* ===================================================================== */
+function buildChips(){
+  const names = ['Maya','Dev','Nina','Leo'];
+  const wrap = el(`<div class="chips">` +
+    names.map((n,i)=>`<button class="chip${i===1?' on':''}">${n}</button>`).join('') +
+    `</div>`);
+  const chips = [...wrap.querySelectorAll('.chip')];
+  function toggle(c){
+    c.classList.toggle('on');
+    restart(c, 'tick');
+  }
+  chips.forEach(c=>c.addEventListener('click',()=>toggle(c)));
+  return { el:wrap, fire:()=>toggle(chips[0]) };
+}
+
+/* ===================================================================== */
+/*  PLACE 5 — round-reveal pacing                                        */
+/* ===================================================================== */
+function buildReveal(paceKey){
+  const wrap = el(`
+    <div class="mini">
+      <div class="m-title stage">
+        <b>Round <span class="rn">3</span></b>
+        <span class="st"><span class="ld"></span>In progress</span>
+      </div>
+      <div class="m-court stage">
+        <div class="ct">Court 1</div>
+        <div class="tm">Maya &amp; Sam</div>
+        <div class="tm">Dev &amp; Nina</div>
+      </div>
+      <div class="m-court stage">
+        <div class="ct">Court 2</div>
+        <div class="tm">Priya &amp; Leo</div>
+        <div class="tm">Aisha &amp; Raj</div>
+      </div>
+      <div class="m-sitouts stage">
+        <span class="so-l">Sitting out</span>
+        <span class="so-n">Tara, Omar</span>
+      </div>
+    </div>`);
+  const stages = [...wrap.querySelectorAll('.stage')];
+  /* "current" mirrors the app today: only court cards animate. */
+  const courtsOnly = paceKey === 'current';
+
+  function fire(){
+    stages.forEach(s=>s.classList.remove('run'));
+    void wrap.offsetWidth;
+    const seq = courtsOnly ? stages.filter(s=>s.classList.contains('m-court')) : stages;
+    seq.forEach((s,i)=>{ s.style.setProperty('--i', i); s.classList.add('run'); });
+  }
+  return { el:wrap, fire };
+}
+
+/* ===================================================================== */
+/*  render                                                               */
+/* ===================================================================== */
+const PLACES = [
+  { num:1, name:'Bottom-nav tab indicator', maps:'App.tsx',
+    note:'Today the 3px signal underline <b>hard-cuts</b> between tabs with no transition at all. The spring slides it. This is the one spot where motion is currently missing entirely &mdash; so a spring adds something rather than replacing a deliberate choice.',
+    variants:SPRINGS, build:buildTabs },
+  { num:2, name:'Court-count stepper', maps:'PlayersScreen.tsx',
+    note:'The &minus;/+ buttons have only a colour change on press. The spring is a <b>scale-back</b>: the button dips under the thumb, then springs to rest. The digit pops in on the same curve.',
+    variants:SPRINGS, build:buildStepper },
+  { num:3, name:'Hero button (Generate / End Round)', maps:'ui.tsx · Button',
+    note:'Currently colour-only feedback. A spring <b>scale-back</b> on press makes the primary action feel tactile. This is the most serious control in the app &mdash; lean toward the firmer end.',
+    variants:SPRINGS, build:buildHero },
+  { num:4, name:'Pool chips', maps:'PlayersScreen.tsx',
+    note:'Chips flip ink/paper on toggle. The spring adds a <b>scale tick</b> on the flip &mdash; a confident click under the finger.',
+    variants:SPRINGS, build:buildChips },
+  { num:5, name:'Round reveal — pacing fix', maps:'RoundScreen.tsx · deal-in',
+    note:'<b>Not a spring.</b> Generate feels too quick because only the court cards deal in (300ms, 55ms stagger) &mdash; the title, status and sit-outs appear instantly, so with two courts the whole reveal is over in ~355ms. The fix: slow each card a little, widen the stagger, and pull the <b>title and sit-outs into the sequence</b> so the round assembles. Deal-in stays decelerating, no overshoot.',
+    variants:PACES, build:buildReveal },
+];
+
+const demos = [];   /* { num, fire, relayout? } */
+
+PLACES.forEach(place=>{
+  const section = el(`
+    <section class="place">
+      <div class="place-head">
+        <span class="pnum">${place.num}</span>
+        <span class="pname">${place.name}</span>
+        <span class="pmaps">${place.maps}</span>
+        <button class="fire">Fire row &#9656;</button>
+      </div>
+      <p class="place-note">${place.note}</p>
+      <div class="trio"></div>
+    </section>`);
+  const trio = section.querySelector('.trio');
+  const rowFires = [];
+
+  place.variants.forEach(v=>{
+    const variantCls = place.variants === SPRINGS ? 'spring-'+v.key : 'pace-'+v.key;
+    const variant = el(`
+      <div class="variant ${variantCls}">
+        <div class="vlabel">
+          <span class="vl-name">${v.name}</span>
+          <span class="vl-sub">${v.sub}</span>
+        </div>
+        <div class="demo"></div>
+      </div>`);
+    const demoBox = variant.querySelector('.demo');
+    const built = place.build(v.key);
+    demoBox.appendChild(built.el);
+    const hint = el(`<div class="demo-hint">${
+      place.num===5 ? 'tap to deal' :
+      place.num===1 ? 'tap a tab' :
+      place.num===4 ? 'tap a chip' : 'tap it'
+    }</div>`);
+    demoBox.appendChild(hint);
+    trio.appendChild(variant);
+
+    rowFires.push(built.fire);
+    demos.push({ num:place.num, fire:built.fire, relayout:built.relayout });
+  });
+
+  section.querySelector('.fire').addEventListener('click',()=>{
+    rowFires.forEach(f=>f());
+  });
+  sheet.appendChild(section);
+});
+
+/* relayout tab indicators once the sheet has its real width */
+function relayoutAll(){ demos.forEach(d=>d.relayout && d.relayout()); }
+requestAnimationFrame(relayoutAll);
+window.addEventListener('resize', relayoutAll);
+
+/* ---- global controls ------------------------------------------------ */
+document.getElementById('fire-all').addEventListener('click',()=>{
+  demos.forEach(d=>d.fire());
+});
+document.getElementById('rm').addEventListener('change',e=>{
+  lab.classList.toggle('reduced', e.target.checked);
+});
+
+/* gentle intro: deal the round-reveal row so the page is alive on load */
+window.addEventListener('load',()=>{
+  relayoutAll();
+  setTimeout(()=>demos.filter(d=>d.num===5).forEach(d=>d.fire()), 480);
+});
+</script>
+</body>
+</html>

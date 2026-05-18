@@ -91,18 +91,30 @@ function RoundView({ round, nameOf }: { round: Round; nameOf: (id: string) => st
   const sitoutNames = round.sitoutIds.map(nameOf)
 
   // Clear the reveal flag once the staggered animation has run, so switching
-  // back to this tab later does not replay it.
+  // back to this tab later does not replay it. Covers the longest deal: a
+  // capped index of 8 at a 120ms stagger plus the 460ms card animation.
   useEffect(() => {
     if (!roundJustGenerated) return
-    const t = setTimeout(consumeRoundReveal, 850)
+    const t = setTimeout(consumeRoundReveal, 1500)
     return () => clearTimeout(t)
   }, [roundJustGenerated, consumeRoundReveal])
+
+  // The round assembles on a 120ms stagger: the title first, then each court,
+  // then the sit-outs row — so the whole round deals in, not just the cards.
+  const dealDelay = (i: number) =>
+    roundJustGenerated ? { animationDelay: `${Math.min(i, 8) * 120}ms` } : undefined
 
   return (
     <section className="space-y-3">
       <SectionLabel>Current round</SectionLabel>
 
-      <div className="flex items-baseline justify-between border-b-2 border-ink pb-2">
+      <div
+        style={dealDelay(0)}
+        className={cn(
+          'flex items-baseline justify-between border-b-2 border-ink pb-2',
+          roundJustGenerated && 'deal-in',
+        )}
+      >
         <h2 className="text-3xl font-extrabold tracking-tight text-ink">
           Round{' '}
           <span data-testid="round-number" className="tabular-nums">
@@ -126,11 +138,7 @@ function RoundView({ round, nameOf }: { round: Round; nameOf: (id: string) => st
             key={`${round.index}-${ci}`}
             data-testid="court"
             data-court={ci}
-            style={
-              roundJustGenerated
-                ? { animationDelay: `${Math.min(ci, 7) * 55}ms` }
-                : undefined
-            }
+            style={dealDelay(ci + 1)}
             className={cn(
               'overflow-hidden rounded-md border border-rule bg-raised',
               roundJustGenerated && 'deal-in',
@@ -203,7 +211,11 @@ function RoundView({ round, nameOf }: { round: Round; nameOf: (id: string) => st
       <div
         data-testid="sitouts"
         data-players={sitoutNames.join(',')}
-        className="flex items-baseline gap-2 border-t border-rule pt-3"
+        style={dealDelay(round.courts.length + 1)}
+        className={cn(
+          'flex items-baseline gap-2 border-t border-rule pt-3',
+          roundJustGenerated && 'deal-in',
+        )}
       >
         <span className="shrink-0 text-[10px] font-extrabold uppercase tracking-[0.14em] text-ink-soft">
           {sitoutNames.length > 0 ? 'Sitting out' : 'Full house'}
