@@ -14,8 +14,10 @@ interface SessionState {
   roundJustGenerated: boolean
   /** Transient: snapshot for undoing the most recent player removal. */
   removalUndo: { players: Player[]; removedName: string } | null
-  /** Transient: snapshot of rounds for undoing a session reset. */
-  sessionUndo: { rounds: Round[] } | null
+  /** Transient: snapshot for undoing the most recent player check-out. */
+  checkoutUndo: { players: Player[]; name: string } | null
+  /** Transient: snapshot of rounds and roster for undoing a session reset. */
+  sessionUndo: { rounds: Round[]; players: Player[] } | null
 
   addPlayer: (name: string) => void
   renamePlayer: (id: string, name: string) => void
@@ -24,7 +26,8 @@ interface SessionState {
   setLockedPartner: (id: string, partnerId: string) => void
   togglePoolMember: (id: string, otherId: string) => void
   setCourtCount: (count: number) => void
-  setPlayerAway: (id: string, away: boolean) => void
+  setPlayerResting: (id: string, resting: boolean) => void
+  checkOutPlayer: (id: string) => void
   generateNextRound: () => void
   rerollRound: () => void
   swapPlayers: (idA: string, idB: string) => void
@@ -37,10 +40,25 @@ interface SessionState {
   consumeRoundReveal: () => void
   undoRemovePlayer: () => void
   clearRemovalUndo: () => void
+  undoCheckOut: () => void
+  clearCheckoutUndo: () => void
 }
 
 function clearConstraint(p: Player): Player {
   return { ...p, mode: 'open', partnerId: null, poolIds: [] }
+}
+
+/** True when the player has appeared on a court, sit-out, or rest in any round. */
+function appearsInRounds(id: string, rounds: Round[]): boolean {
+  for (const r of rounds) {
+    if (r.sitoutIds.includes(id) || r.restingIds.includes(id)) return true
+    for (const c of r.courts) {
+      for (const t of c.teams) {
+        if (t.players[0] === id || t.players[1] === id) return true
+      }
+    }
+  }
+  return false
 }
 
 export const useStore = create<SessionState>()(
@@ -53,6 +71,7 @@ export const useStore = create<SessionState>()(
       activeTab: 'players',
       roundJustGenerated: false,
       removalUndo: null,
+      checkoutUndo: null,
       sessionUndo: null,
 
       addPlayer: (name) => {
@@ -64,7 +83,7 @@ export const useStore = create<SessionState>()(
           mode: 'open',
           partnerId: null,
           poolIds: [],
-          away: false,
+          status: 'playing',
         }
         set((s) => ({ players: [...s.players, player] }))
       },
@@ -79,6 +98,10 @@ export const useStore = create<SessionState>()(
         set((s) => {
           const removed = s.players.find((p) => p.id === id)
           if (!removed) return {}
+          // A player who has appeared in a round is checked out, never deleted,
+          // so their leaderboard record and round history survive. Hard
+          // deletion is reserved for roster entries with no history.
+          if (appearsInRounds(id, s.rounds)) return {}
           const players = s.players
             .filter((p) => p.id !== id)
             .map((p) => {
@@ -170,10 +193,41 @@ export const useStore = create<SessionState>()(
         set({ courtCount: clamped })
       },
 
-      setPlayerAway: (id, away) => {
+      setPlayerResting: (id, resting) => {
+        // A resting player stays in the session but sits the next round out.
+        // A checked-out player cannot be toggled — they have left for good.
         set((s) => ({
-          players: s.players.map((p) => (p.id === id ? { ...p, away } : p)),
+          players: s.players.map((p) =>
+            p.id === id && p.status !== 'left'
+              ? { ...p, status: resting ? 'resting' : 'playing' }
+              : p,
+          ),
         }))
+      },
+
+      checkOutPlayer: (id) => {
+        set((s) => {
+          const target = s.players.find((p) => p.id === id)
+          if (!target || target.status === 'left') return {}
+          // The player stays on the roster as `left` so their leaderboard
+          // record survives; their constraints are cleared and anyone linked
+          // to them is released.
+          const players: Player[] = s.players.map((p) => {
+            if (p.id === id) return { ...clearConstraint(p), status: 'left' }
+            let next = p
+            if (next.partnerId === id) {
+              next = { ...next, mode: 'open', partnerId: null }
+            }
+            if (next.poolIds.includes(id)) {
+              next = { ...next, poolIds: next.poolIds.filter((x) => x !== id) }
+            }
+            return next
+          })
+          return {
+            players,
+            checkoutUndo: { players: s.players, name: target.name },
+          }
+        })
       },
 
       generateNextRound: () => {
@@ -183,13 +237,16 @@ export const useStore = create<SessionState>()(
           set({ generationError: 'Finish the current round before generating the next one.' })
           return
         }
-        // Players marked Away stay on the roster but sit out generation.
-        const active = players.filter((p) => !p.away)
+        // `playing` players fill courts; `resting` players sit the round out
+        // but stay in the session; `left` players are gone for good.
+        const active = players.filter((p) => p.status === 'playing')
+        const resting = players.filter((p) => p.status === 'resting')
         if (active.length < 4) {
+          const roster = players.filter((p) => p.status !== 'left').length
           set({
             generationError:
-              players.length >= 4
-                ? 'Not enough players in the rotation. Bring someone back from Away.'
+              roster >= 4
+                ? 'Not enough players in the rotation. Bring someone back from resting.'
                 : 'Add at least 4 players to generate a round.',
           })
           return
@@ -203,6 +260,7 @@ export const useStore = create<SessionState>()(
           index: rounds.length + 1,
           courts: result.courts,
           sitoutIds: result.sitoutIds,
+          restingIds: resting.map((p) => p.id),
           locked: false,
         }
         set({
@@ -217,12 +275,14 @@ export const useStore = create<SessionState>()(
         const { players, courtCount, rounds } = get()
         const last = rounds[rounds.length - 1]
         if (!last || last.locked) return
-        const active = players.filter((p) => !p.away)
+        const active = players.filter((p) => p.status === 'playing')
+        const resting = players.filter((p) => p.status === 'resting')
         if (active.length < 4) {
+          const roster = players.filter((p) => p.status !== 'left').length
           set({
             generationError:
-              players.length >= 4
-                ? 'Not enough players in the rotation. Bring someone back from Away.'
+              roster >= 4
+                ? 'Not enough players in the rotation. Bring someone back from resting.'
                 : 'Add at least 4 players to generate a round.',
           })
           return
@@ -239,6 +299,7 @@ export const useStore = create<SessionState>()(
           index: last.index,
           courts: result.courts,
           sitoutIds: result.sitoutIds,
+          restingIds: resting.map((p) => p.id),
           locked: false,
         }
         set({
@@ -304,19 +365,31 @@ export const useStore = create<SessionState>()(
       resetSession: () => {
         set((s) => {
           if (s.rounds.length === 0) return { generationError: null }
-          // Snapshot rounds so an accidental reset can be undone from the toast.
+          // A cleared session is a fresh start: everyone returns to the
+          // rotation, including anyone who was resting or had checked out.
+          const players: Player[] = s.players.map((p) =>
+            p.status === 'playing' ? p : { ...p, status: 'playing' },
+          )
+          // Snapshot rounds and roster so an accidental reset can be undone.
           return {
             rounds: [],
+            players,
             generationError: null,
             activeTab: 'players',
-            sessionUndo: { rounds: s.rounds },
+            sessionUndo: { rounds: s.rounds, players: s.players },
           }
         })
       },
 
       undoResetSession: () =>
         set((s) =>
-          s.sessionUndo ? { rounds: s.sessionUndo.rounds, sessionUndo: null } : {},
+          s.sessionUndo
+            ? {
+                rounds: s.sessionUndo.rounds,
+                players: s.sessionUndo.players,
+                sessionUndo: null,
+              }
+            : {},
         ),
 
       clearSessionUndo: () => set({ sessionUndo: null }),
@@ -331,17 +404,38 @@ export const useStore = create<SessionState>()(
         ),
 
       clearRemovalUndo: () => set({ removalUndo: null }),
+
+      undoCheckOut: () =>
+        set((s) =>
+          s.checkoutUndo ? { players: s.checkoutUndo.players, checkoutUndo: null } : {},
+        ),
+
+      clearCheckoutUndo: () => set({ checkoutUndo: null }),
     }),
     {
       name: 'court-shuffle-v1',
-      version: 2,
-      // v2 added Player.away; backfill it for sessions persisted under v1.
+      version: 3,
+      // v2 added Player.away; v3 replaced it with Player.status and added
+      // Round.restingIds. Backfill both for sessions persisted under v1/v2.
       migrate: (persisted, version) => {
-        const state = persisted as Partial<SessionState>
+        const state = persisted as {
+          players?: Array<Record<string, unknown>>
+          rounds?: Array<Record<string, unknown>>
+          [k: string]: unknown
+        }
         if (version < 2 && state.players) {
           state.players = state.players.map((p) => ({ away: false, ...p }))
         }
-        return state as SessionState
+        if (version < 3 && state.players) {
+          state.players = state.players.map(({ away, ...rest }) => ({
+            ...rest,
+            status: away ? 'resting' : 'playing',
+          }))
+        }
+        if (version < 3 && state.rounds) {
+          state.rounds = state.rounds.map((r) => ({ restingIds: [], ...r }))
+        }
+        return state as unknown as SessionState
       },
       partialize: (s) => ({
         players: s.players,

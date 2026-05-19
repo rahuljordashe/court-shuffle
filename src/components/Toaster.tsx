@@ -3,18 +3,22 @@ import { useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 
 /**
- * Transient confirmations, courtside-sized. Carries two reversible actions: a
- * removed player can be restored, and a reset session's standings can be
- * brought back. Both undo in a single tap, for a few seconds.
+ * Transient confirmations, courtside-sized. Carries three reversible actions: a
+ * removed player can be restored, a checked-out player can be brought back, and
+ * a reset session's standings can be returned. All undo in a single tap, for a
+ * few seconds.
  *
  * The toast slides in like a card laid on the table, then clears itself after
  * five seconds (or the moment Undo is pressed).
  */
 export function Toaster() {
   const removalUndo = useStore((s) => s.removalUndo)
+  const checkoutUndo = useStore((s) => s.checkoutUndo)
   const sessionUndo = useStore((s) => s.sessionUndo)
   const undoRemovePlayer = useStore((s) => s.undoRemovePlayer)
   const clearRemovalUndo = useStore((s) => s.clearRemovalUndo)
+  const undoCheckOut = useStore((s) => s.undoCheckOut)
+  const clearCheckoutUndo = useStore((s) => s.clearCheckoutUndo)
   const undoResetSession = useStore((s) => s.undoResetSession)
   const clearSessionUndo = useStore((s) => s.clearSessionUndo)
 
@@ -27,7 +31,7 @@ export function Toaster() {
   const [leaving, setLeaving] = useState(false)
 
   useEffect(() => {
-    // A removed player takes precedence over a reset session if both are live.
+    // The most recent roster action takes precedence if several are live.
     const active = removalUndo
       ? {
           label: 'Removed',
@@ -35,14 +39,21 @@ export function Toaster() {
           onUndo: undoRemovePlayer,
           onClear: clearRemovalUndo,
         }
-      : sessionUndo
+      : checkoutUndo
         ? {
-            label: 'Cleared',
-            text: 'Session standings reset',
-            onUndo: undoResetSession,
-            onClear: clearSessionUndo,
+            label: 'Checked out',
+            text: checkoutUndo.name,
+            onUndo: undoCheckOut,
+            onClear: clearCheckoutUndo,
           }
-        : null
+        : sessionUndo
+          ? {
+              label: 'Cleared',
+              text: 'Session standings reset',
+              onUndo: undoResetSession,
+              onClear: clearSessionUndo,
+            }
+          : null
 
     if (active) {
       setShown({ label: active.label, text: active.text, onUndo: active.onUndo })
@@ -56,9 +67,12 @@ export function Toaster() {
     return () => clearTimeout(t)
   }, [
     removalUndo,
+    checkoutUndo,
     sessionUndo,
     undoRemovePlayer,
     clearRemovalUndo,
+    undoCheckOut,
+    clearCheckoutUndo,
     undoResetSession,
     clearSessionUndo,
   ])

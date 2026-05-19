@@ -15,7 +15,9 @@ const TABS: { key: TabKey; label: string }[] = [
 export default function App() {
   const activeTab = useStore((s) => s.activeTab)
   const setActiveTab = useStore((s) => s.setActiveTab)
-  const playerCount = useStore((s) => s.players.length)
+  const playerCount = useStore(
+    (s) => s.players.filter((p) => p.status !== 'left').length,
+  )
   const activeIndex = Math.max(
     0,
     TABS.findIndex((t) => t.key === activeTab),

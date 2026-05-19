@@ -12,11 +12,17 @@ import type { Court, Player, Round } from './types'
  *   1. Avoid back-to-back sit-outs (benching a player two rounds running).
  *   2. Maximise never-before-paired partner combinations.
  *   3. Maximise never-before-faced opponent matchups.
- *   4. Minimise the spread of sit-out counts across the session.
+ *   4. Keep the spread of sit-out *deficits* tight.
  *
- * Sit-out fairness is also enforced during selection, not just scored: units
- * are benched in strict order of prior sit-out count, so session totals stay
- * even, and within a tier players who sat the previous round are picked last.
+ * Sit-out fairness is measured per player over only the rounds they were
+ * present for, as a deficit: the sit-outs they were due (their fair share)
+ * minus the sit-outs they actually took. A player absent from history sits at
+ * deficit zero, so a mid-session joiner is treated exactly like everyone else
+ * from the moment they arrive — never benched to "catch up" on rounds they
+ * missed. A rested round counts as a sit-out, so a voluntary break is one
+ * bench turn, not an extra one. Units are benched in order of deficit (most
+ * owed a bench first), and players who sat the previous round are pushed to
+ * the back of their tier.
  */
 
 function pairKey(a: string, b: string): string {
@@ -26,20 +32,30 @@ function pairKey(a: string, b: string): string {
 interface Stats {
   partner: Record<string, number>
   opponent: Record<string, number>
-  sitout: Record<string, number>
-  /** Players who sat out the most recent round (used to avoid repeats). */
+  /**
+   * Sit-out deficit per player: the sit-outs they were due (fair share across
+   * the rounds they were present) minus the sit-outs they took. Positive means
+   * under-benched and due a sit-out; negative means over-benched.
+   */
+  sitoutDeficit: Record<string, number>
+  /** Players off-court the most recent round — benched or resting. */
   lastSitout: Set<string>
 }
 
 function buildStats(players: Player[], rounds: Round[]): Stats {
   const partner: Record<string, number> = {}
   const opponent: Record<string, number> = {}
-  const sitout: Record<string, number> = {}
-  for (const p of players) sitout[p.id] = 0
+  const expected: Record<string, number> = {}
+  const actual: Record<string, number> = {}
+
   for (const round of rounds) {
-    for (const id of round.sitoutIds) {
-      if (id in sitout) sitout[id] += 1
-    }
+    // Off-court this round: benched by the generator, or resting by choice.
+    // Both count equally toward sit-out fairness.
+    const offcourt = new Set<string>([
+      ...round.sitoutIds,
+      ...(round.restingIds ?? []),
+    ])
+    const present = new Set<string>(offcourt)
     for (const court of round.courts) {
       const [t0, t1] = court.teams
       const k0 = pairKey(t0.players[0], t0.players[1])
@@ -52,11 +68,28 @@ function buildStats(players: Player[], rounds: Round[]): Stats {
           opponent[k] = (opponent[k] ?? 0) + 1
         }
       }
+      for (const team of court.teams) {
+        present.add(team.players[0])
+        present.add(team.players[1])
+      }
     }
+    // A round's fair share of sitting is the off-court count over everyone
+    // present; each present player is "due" that fraction of a sit-out.
+    const fairShare = present.size > 0 ? offcourt.size / present.size : 0
+    for (const id of present) expected[id] = (expected[id] ?? 0) + fairShare
+    for (const id of offcourt) actual[id] = (actual[id] ?? 0) + 1
   }
+
+  const sitoutDeficit: Record<string, number> = {}
+  for (const p of players) {
+    sitoutDeficit[p.id] = (expected[p.id] ?? 0) - (actual[p.id] ?? 0)
+  }
+
   const lastRound = rounds[rounds.length - 1]
-  const lastSitout = new Set<string>(lastRound ? lastRound.sitoutIds : [])
-  return { partner, opponent, sitout, lastSitout }
+  const lastSitout = new Set<string>(
+    lastRound ? [...lastRound.sitoutIds, ...(lastRound.restingIds ?? [])] : [],
+  )
+  return { partner, opponent, sitoutDeficit, lastSitout }
 }
 
 function shuffle<T>(arr: T[]): T[] {
@@ -173,15 +206,18 @@ function buildAttempt(
   stats: Stats,
 ): Attempt | null {
   // Choose sit-out units. The key is layered so sit-out fairness is enforced,
-  // not merely scored: the prior sit-out count dominates (fewest sit first, so
-  // session totals stay even), then players who sat the previous round are
-  // pushed to the back of their tier (no back-to-back unless forced), then a
-  // random term breaks remaining ties so partnerships still vary.
+  // not merely scored: a unit's sit-out deficit dominates (most owed a bench
+  // sits first, so each player gets their fair share of sitting), then players
+  // who sat the previous round are pushed to the back of their tier (no
+  // back-to-back unless forced), then a random term breaks remaining ties so
+  // partnerships still vary.
   const ordered = units
     .map((u) => {
-      const avg = u.ids.reduce((s, id) => s + (stats.sitout[id] ?? 0), 0) / u.ids.length
+      const deficit =
+        u.ids.reduce((s, id) => s + (stats.sitoutDeficit[id] ?? 0), 0) /
+        u.ids.length
       const repeat = u.ids.some((id) => stats.lastSitout.has(id)) ? 1 : 0
-      return { u, key: avg * 1000 + repeat * 10 + Math.random() }
+      return { u, key: -deficit * 1_000_000 + repeat * 10 + Math.random() }
     })
     .sort((a, b) => a.key - b.key)
 
@@ -310,8 +346,10 @@ function partnerWeight(a: string, b: string, stats: Stats): number {
 function scoreRound(courts: Court[], sitoutIds: string[], stats: Stats): number {
   let partnerTerm = 0
   let opponentTerm = 0
+  const present: string[] = []
   for (const court of courts) {
     for (const team of court.teams) {
+      present.push(team.players[0], team.players[1])
       const prev = stats.partner[pairKey(team.players[0], team.players[1])] ?? 0
       partnerTerm += prev === 0 ? 2 : -3 * prev
     }
@@ -323,9 +361,20 @@ function scoreRound(courts: Court[], sitoutIds: string[], stats: Stats): number 
       }
     }
   }
+  present.push(...sitoutIds)
+
+  // Sit-out balance: keep the spread of post-round sit-out deficits tight.
   const sitset = new Set(sitoutIds)
-  const counts = Object.entries(stats.sitout).map(([id, c]) => (sitset.has(id) ? c + 1 : c))
-  const spread = counts.length > 0 ? Math.max(...counts) - Math.min(...counts) : 0
+  const fairShare = present.length > 0 ? sitoutIds.length / present.length : 0
+  let maxD = -Infinity
+  let minD = Infinity
+  for (const id of present) {
+    const d = (stats.sitoutDeficit[id] ?? 0) + fairShare - (sitset.has(id) ? 1 : 0)
+    if (d > maxD) maxD = d
+    if (d < minD) minD = d
+  }
+  const spread = present.length > 0 ? maxD - minD : 0
+
   // Back-to-back sit-outs outrank every other objective: a round that benches
   // anyone two rounds running loses to any round that does not.
   let backToBack = 0

@@ -1,5 +1,16 @@
 export type ConstraintMode = 'open' | 'locked' | 'pool'
 
+/**
+ * A player's lifecycle within a session:
+ *  - `playing`: in the rotation for the next generated round.
+ *  - `resting`: temporarily out by choice; rejoins when toggled back. A
+ *    rested round still counts as a sit-out for fairness — a break is one
+ *    bench turn, not an extra one.
+ *  - `left`: checked out for good. Excluded from every future round, but the
+ *    leaderboard record and past rounds are preserved.
+ */
+export type PlayerStatus = 'playing' | 'resting' | 'left'
+
 export interface Player {
   id: string
   name: string
@@ -8,9 +19,8 @@ export interface Player {
   partnerId: string | null
   /** For `pool` mode: the set of player ids this player may partner with. */
   poolIds: string[]
-  /** True when the player is temporarily out of the rotation. They stay on the
-   *  roster and keep their leaderboard record and constraints. */
-  away: boolean
+  /** Session lifecycle state. See {@link PlayerStatus}. */
+  status: PlayerStatus
 }
 
 export interface Team {
@@ -28,8 +38,13 @@ export interface Round {
   /** 1-based round number. */
   index: number
   courts: Court[]
-  /** Player ids sitting out this round. */
+  /** Player ids the generator benched this round for lack of court space. */
   sitoutIds: string[]
+  /**
+   * Player ids who were `resting` this round — off-court by their own choice.
+   * Disjoint from `sitoutIds`; both count equally as a sit-out for fairness.
+   */
+  restingIds: string[]
   /** True once "End Round" is pressed; scores become read-only. */
   locked: boolean
 }

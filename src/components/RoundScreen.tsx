@@ -50,7 +50,8 @@ function GenerateAction({ first }: { first: boolean }) {
 
   const current = rounds[rounds.length - 1]
   const hasOpenRound = current != null && !current.locked
-  const enoughPlayers = players.length >= 4
+  // Checked-out players are gone for good and never count toward a round.
+  const enoughPlayers = players.filter((p) => p.status !== 'left').length >= 4
   const canGenerate = enoughPlayers && !hasOpenRound
 
   return (
@@ -98,6 +99,7 @@ function RoundView({ round, nameOf }: { round: Round; nameOf: (id: string) => st
   const roundJustGenerated = useStore((s) => s.roundJustGenerated)
   const consumeRoundReveal = useStore((s) => s.consumeRoundReveal)
   const sitoutNames = round.sitoutIds.map(nameOf)
+  const restingNames = round.restingIds.map(nameOf)
 
   // Swap mode is a local, additive interaction layer over the round. It only
   // exists while the round is open; a locked round can never enter it.
@@ -319,6 +321,23 @@ function RoundView({ round, nameOf }: { round: Round; nameOf: (id: string) => st
         )}
       </div>
 
+      {round.restingIds.length > 0 && (
+        <div
+          data-testid="resting"
+          data-players={restingNames.join(',')}
+          style={dealDelay(round.courts.length + 2)}
+          className={cn(
+            'flex items-baseline gap-2 border-t border-rule pt-3',
+            roundJustGenerated && 'deal-in',
+          )}
+        >
+          <span className="shrink-0 text-[10px] font-extrabold uppercase tracking-[0.14em] text-ink-soft">
+            Resting
+          </span>
+          <span className="text-sm font-bold text-ink">{restingNames.join(', ')}</span>
+        </div>
+      )}
+
       {round.locked ? (
         <GenerateAction first={false} />
       ) : (
@@ -401,6 +420,7 @@ function HistoryRound({
 }) {
   const setScore = useStore((s) => s.setScore)
   const sitoutNames = round.sitoutIds.map(nameOf)
+  const restingNames = round.restingIds.map(nameOf)
 
   return (
     <div data-testid="history-round" data-round={round.index} className="space-y-3">
@@ -488,6 +508,19 @@ function HistoryRound({
           {sitoutNames.length > 0 ? sitoutNames.join(', ') : 'Everyone is playing'}
         </span>
       </div>
+
+      {round.restingIds.length > 0 && (
+        <div
+          data-testid="history-resting"
+          data-players={restingNames.join(',')}
+          className="flex items-baseline gap-2 border-t border-rule pt-2.5"
+        >
+          <span className="shrink-0 text-[10px] font-extrabold uppercase tracking-[0.14em] text-ink-soft">
+            Resting
+          </span>
+          <span className="text-sm font-bold text-ink">{restingNames.join(', ')}</span>
+        </div>
+      )}
     </div>
   )
 }

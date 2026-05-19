@@ -4,7 +4,10 @@ export interface RoundData {
   index: number
   /** courts -> teams -> player names */
   courts: string[][][]
+  /** Players the generator benched this round. */
   sitouts: string[]
+  /** Players off-court this round by choice. */
+  resting: string[]
 }
 
 export function getRow(page: Page, name: string): Locator {
@@ -58,6 +61,29 @@ export async function togglePoolMember(
     .click()
 }
 
+/** Sets a player's resting state, idempotently. */
+export async function setResting(
+  page: Page,
+  name: string,
+  resting: boolean,
+): Promise<void> {
+  await page.getByTestId('tab-players').click()
+  const row = getRow(page, name)
+  const isResting = (await row.getAttribute('data-status')) === 'resting'
+  if (isResting !== resting) {
+    await row.getByTestId('player-rest-toggle').click()
+  }
+  await expect(row).toHaveAttribute('data-status', resting ? 'resting' : 'playing')
+}
+
+/** Checks a player out of the session for good. */
+export async function checkOutPlayer(page: Page, name: string): Promise<void> {
+  await page.getByTestId('tab-players').click()
+  const row = getRow(page, name)
+  await row.getByTestId('player-checkout').click()
+  await expect(row).toHaveAttribute('data-status', 'left')
+}
+
 /** Adds 10 players, a locked P0/P1 pair, a pool player P2 with pool {P3,P4}, 2 courts. */
 export async function setupConstrainedSession(page: Page): Promise<string[]> {
   const names = ['P0', 'P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8', 'P9']
@@ -87,10 +113,16 @@ export async function readRound(page: Page): Promise<RoundData> {
     courts.push(teams)
   }
   const sitAttr = (await page.getByTestId('sitouts').getAttribute('data-players')) ?? ''
+  const restingLoc = page.getByTestId('resting')
+  const restAttr =
+    (await restingLoc.count()) > 0
+      ? ((await restingLoc.getAttribute('data-players')) ?? '')
+      : ''
   return {
     index: Number(indexText),
     courts,
     sitouts: sitAttr.split(',').filter(Boolean),
+    resting: restAttr.split(',').filter(Boolean),
   }
 }
 
