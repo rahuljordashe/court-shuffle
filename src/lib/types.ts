@@ -6,8 +6,9 @@ export type ConstraintMode = 'open' | 'locked' | 'pool'
  *  - `resting`: temporarily out by choice; rejoins when toggled back. A
  *    rested round still counts as a sit-out for fairness — a break is one
  *    bench turn, not an extra one.
- *  - `left`: checked out for good. Excluded from every future round, but the
- *    leaderboard record and past rounds are preserved.
+ *  - `left`: checked out. Excluded from every future round, but the
+ *    leaderboard record and past rounds are preserved. Reversible — a
+ *    checked-out player can be brought back, returning as `resting`.
  */
 export type PlayerStatus = 'playing' | 'resting' | 'left'
 

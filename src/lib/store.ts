@@ -9,6 +9,8 @@ interface SessionState {
   courtCount: number
   rounds: Round[]
   generationError: string | null
+  /** Transient: validation message for the add-player field; null when valid. */
+  addPlayerError: string | null
   activeTab: TabKey
   /** Transient: true for one beat after a round is generated, drives the reveal. */
   roundJustGenerated: boolean
@@ -20,6 +22,7 @@ interface SessionState {
   sessionUndo: { rounds: Round[]; players: Player[] } | null
 
   addPlayer: (name: string) => void
+  clearAddPlayerError: () => void
   renamePlayer: (id: string, name: string) => void
   removePlayer: (id: string) => void
   setMode: (id: string, mode: ConstraintMode) => void
@@ -28,6 +31,7 @@ interface SessionState {
   setCourtCount: (count: number) => void
   setPlayerResting: (id: string, resting: boolean) => void
   checkOutPlayer: (id: string) => void
+  reinstatePlayer: (id: string) => void
   generateNextRound: () => void
   rerollRound: () => void
   swapPlayers: (idA: string, idB: string) => void
@@ -68,6 +72,7 @@ export const useStore = create<SessionState>()(
       courtCount: 2,
       rounds: [],
       generationError: null,
+      addPlayerError: null,
       activeTab: 'players',
       roundJustGenerated: false,
       removalUndo: null,
@@ -75,8 +80,22 @@ export const useStore = create<SessionState>()(
       sessionUndo: null,
 
       addPlayer: (name) => {
-        const trimmed = name.trim()
-        if (!trimmed) return
+        // Trim, then collapse internal whitespace runs so " Big   Spaces "
+        // cannot become a near-duplicate of "Big Spaces".
+        const trimmed = name.trim().replace(/\s+/g, ' ')
+        if (!trimmed) {
+          set({ addPlayerError: 'Enter a name to add a player.' })
+          return
+        }
+        // Reject a name already on the roster (any status) — two identical
+        // names make constraints and the leaderboard ambiguous.
+        const exists = get().players.some(
+          (p) => p.name.toLowerCase() === trimmed.toLowerCase(),
+        )
+        if (exists) {
+          set({ addPlayerError: `"${trimmed}" is already on the roster.` })
+          return
+        }
         const player: Player = {
           id: uid(),
           name: trimmed,
@@ -85,8 +104,10 @@ export const useStore = create<SessionState>()(
           poolIds: [],
           status: 'playing',
         }
-        set((s) => ({ players: [...s.players, player] }))
+        set((s) => ({ players: [...s.players, player], addPlayerError: null }))
       },
+
+      clearAddPlayerError: () => set({ addPlayerError: null }),
 
       renamePlayer: (id, name) => {
         set((s) => ({
@@ -228,6 +249,18 @@ export const useStore = create<SessionState>()(
             checkoutUndo: { players: s.players, name: target.name },
           }
         })
+      },
+
+      reinstatePlayer: (id) => {
+        // Bring a checked-out player back into the session. They return as
+        // `resting` — on the roster but not dealt into the next round until
+        // the organizer taps them into rotation. Fixes an accidental
+        // check-out without having to clear the whole session.
+        set((s) => ({
+          players: s.players.map((p) =>
+            p.id === id && p.status === 'left' ? { ...p, status: 'resting' } : p,
+          ),
+        }))
       },
 
       generateNextRound: () => {

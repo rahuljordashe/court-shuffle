@@ -41,6 +41,11 @@ export function LeaderboardScreen() {
   }
 
   const noScores = stats.every((s) => s.games === 0)
+  // Checked-out players keep their record but are marked, not shown as live
+  // competitors — see DECISIONS.md.
+  const leftIds = new Set(
+    players.filter((p) => p.status === 'left').map((p) => p.id),
+  )
 
   return (
     <div className="space-y-3 pt-6">
@@ -70,14 +75,14 @@ export function LeaderboardScreen() {
           resortNonce > 0 && 'deal-in',
         )}
       >
-        <table className="w-full text-sm">
+        <table className="w-full table-fixed text-sm">
           <thead>
             <tr className="border-b-2 border-ink text-[10px] font-extrabold uppercase tracking-[0.1em] text-ink-soft">
-              <th className="w-9 py-2 pl-3 text-left font-extrabold">#</th>
-              <th className="py-2 text-left font-extrabold">Player</th>
-              <th className="py-2 text-right font-extrabold">Win %</th>
-              <th className="py-2 text-right font-extrabold">Diff</th>
-              <th className="w-14 py-2 pr-3 text-right font-extrabold">W / G</th>
+              <th scope="col" className="w-9 py-2 pl-3 text-left font-extrabold">#</th>
+              <th scope="col" className="py-2 text-left font-extrabold">Player</th>
+              <th scope="col" className="w-16 py-2 text-right font-extrabold">Win %</th>
+              <th scope="col" className="w-16 py-2 text-right font-extrabold">Diff</th>
+              <th scope="col" className="w-14 py-2 pr-3 text-right font-extrabold">W / G</th>
             </tr>
           </thead>
           <tbody>
@@ -95,8 +100,20 @@ export function LeaderboardScreen() {
                 <td className="py-2.5 pl-3 text-left text-[13px] font-extrabold tabular-nums text-ink-faint">
                   {i + 1}
                 </td>
-                <td className="py-2.5 pr-2 font-bold text-ink">
-                  <span className="block max-w-[8rem] truncate">{st.name}</span>
+                <td className="py-2.5 pr-2 font-bold">
+                  <span
+                    className={cn(
+                      'flex items-center gap-1.5',
+                      leftIds.has(st.id) ? 'text-ink-faint' : 'text-ink',
+                    )}
+                  >
+                    <span className="min-w-0 truncate">{st.name}</span>
+                    {leftIds.has(st.id) && (
+                      <span className="shrink-0 rounded border border-rule px-1 py-0.5 text-[9px] font-extrabold uppercase tracking-[0.08em] text-ink-faint">
+                        Out
+                      </span>
+                    )}
+                  </span>
                 </td>
                 <td className="py-2.5 text-right font-bold tabular-nums text-ink">
                   {st.games > 0 ? `${round1(st.winPct)}%` : '—'}

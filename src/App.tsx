@@ -25,19 +25,19 @@ export default function App() {
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-md flex-col bg-paper">
-      <header className="sticky top-0 z-10 flex items-center justify-between border-b-2 border-ink bg-paper px-5 py-3.5">
+      <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b-2 border-ink bg-paper px-5 pb-3.5 pt-[calc(0.875rem+env(safe-area-inset-top))]">
         <h1
           data-testid="app-title"
-          className="text-base font-extrabold uppercase tracking-[0.18em] text-ink"
+          className="min-w-0 truncate text-base font-extrabold uppercase tracking-[0.18em] text-ink"
         >
           Court<span className="text-signal">/</span>Shuffle
         </h1>
-        <span className="text-[10px] font-extrabold uppercase tracking-[0.13em] text-ink-soft">
+        <span className="shrink-0 text-[10px] font-extrabold uppercase tracking-[0.13em] text-ink-soft">
           {playerCount} {playerCount === 1 ? 'Player' : 'Players'}
         </span>
       </header>
 
-      <main className="flex-1 px-5 pb-28">
+      <main className="flex-1 px-5 pb-36">
         {activeTab === 'players' && <PlayersScreen />}
         {activeTab === 'round' && <RoundScreen />}
         {activeTab === 'leaderboard' && <LeaderboardScreen />}
@@ -59,6 +59,7 @@ export default function App() {
               key={t.key}
               data-testid={`tab-${t.key}`}
               data-active={on}
+              aria-current={on ? 'page' : undefined}
               onClick={() => setActiveTab(t.key)}
               className="flex flex-1 flex-col items-center"
             >

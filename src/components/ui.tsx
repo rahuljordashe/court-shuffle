@@ -1,7 +1,7 @@
 import type {
   ButtonHTMLAttributes,
+  ComponentPropsWithRef,
   HTMLAttributes,
-  InputHTMLAttributes,
   SelectHTMLAttributes,
 } from 'react'
 import { cn } from '@/lib/utils'
@@ -9,8 +9,10 @@ import { cn } from '@/lib/utils'
 type Variant = 'signal' | 'ink' | 'outline' | 'ghost'
 
 const variantClasses: Record<Variant, string> = {
+  // Signal fill sits at signal-deep so on-signal text clears the 7:1 elevated
+  // contrast bar; press/hover steps down again to signal-press.
   signal:
-    'border border-signal bg-signal text-on-signal hover:border-signal-deep hover:bg-signal-deep active:border-signal-deep active:bg-signal-deep',
+    'border border-signal-deep bg-signal-deep text-on-signal hover:border-signal-press hover:bg-signal-press active:border-signal-press active:bg-signal-press',
   ink: 'border border-ink bg-ink text-paper hover:opacity-90 active:opacity-80',
   outline:
     'border border-rule bg-raised text-ink hover:border-ink active:border-ink active:bg-sunk',
@@ -27,7 +29,7 @@ export function Button({ variant = 'signal', className, ...props }: ButtonProps)
     <button
       className={cn(
         'inline-flex min-h-12 select-none items-center justify-center gap-2 rounded-md px-4',
-        'spring-press text-sm font-extrabold uppercase tracking-[0.09em]',
+        'spring-press text-sm font-extrabold uppercase tracking-[0.1em]',
         'disabled:cursor-not-allowed disabled:opacity-45',
         variantClasses[variant],
         className,
@@ -53,7 +55,7 @@ export function SectionLabel({ className, ...props }: HTMLAttributes<HTMLParagra
   )
 }
 
-export function TextInput({ className, ...props }: InputHTMLAttributes<HTMLInputElement>) {
+export function TextInput({ className, ...props }: ComponentPropsWithRef<'input'>) {
   return (
     <input
       className={cn(

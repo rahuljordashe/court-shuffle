@@ -7,10 +7,15 @@
   --color-sunk: oklch(0.955 0.009 78);
   --color-ink: oklch(0.235 0.014 62);
   --color-ink-soft: oklch(0.505 0.016 62);
-  --color-ink-faint: oklch(0.66 0.014 62);
+  /* Tertiary tone. Held at >=4.5:1 on every surface (paper/raised/sunk) so it
+     is legal for text in direct sunlight — see PRODUCT.md outdoor legibility. */
+  --color-ink-faint: oklch(0.55 0.016 62);
   --color-rule: oklch(0.235 0.014 62 / 0.16);
   --color-signal: oklch(0.535 0.205 34);
   --color-signal-deep: oklch(0.46 0.185 34);
+  /* Pressed/hover for filled signal controls — one step below signal-deep so
+     on-signal text clears the 7:1 elevated bar in every button state. */
+  --color-signal-press: oklch(0.405 0.16 34);
   --color-signal-wash: oklch(0.955 0.035 46);
   --color-on-signal: oklch(0.99 0.014 78);
 }

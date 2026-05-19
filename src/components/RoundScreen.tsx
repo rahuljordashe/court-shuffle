@@ -51,8 +51,10 @@ function GenerateAction({ first }: { first: boolean }) {
   const current = rounds[rounds.length - 1]
   const hasOpenRound = current != null && !current.locked
   // Checked-out players are gone for good and never count toward a round.
-  const enoughPlayers = players.filter((p) => p.status !== 'left').length >= 4
+  const rosterActive = players.filter((p) => p.status !== 'left').length
+  const enoughPlayers = rosterActive >= 4
   const canGenerate = enoughPlayers && !hasOpenRound
+  const needed = 4 - rosterActive
 
   return (
     <div className="space-y-3">
@@ -61,14 +63,18 @@ function GenerateAction({ first }: { first: boolean }) {
         variant={canGenerate ? 'signal' : 'outline'}
         disabled={!canGenerate}
         onClick={generateNextRound}
-        className="min-h-14 w-full text-base"
+        /* Disabled keeps the Outline variant at full opacity — it reads as
+           "not the live action" by variant, not by a sunlight-illegible fade. */
+        className="min-h-14 w-full text-base disabled:opacity-100"
       >
         <span>{first ? 'Generate first round' : 'Generate next round'}</span>
         <span aria-hidden="true">&rarr;</span>
       </Button>
       {!enoughPlayers && (
         <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-ink-faint">
-          Add at least 4 players to generate a round
+          {rosterActive === 0
+            ? 'Add at least 4 players to generate a round'
+            : `Add ${needed} more ${needed === 1 ? 'player' : 'players'} to generate a round`}
         </p>
       )}
       {generationError && (
@@ -96,6 +102,7 @@ function RoundView({ round, nameOf }: { round: Round; nameOf: (id: string) => st
   const endRound = useStore((s) => s.endRound)
   const rerollRound = useStore((s) => s.rerollRound)
   const swapPlayers = useStore((s) => s.swapPlayers)
+  const courtCount = useStore((s) => s.courtCount)
   const roundJustGenerated = useStore((s) => s.roundJustGenerated)
   const consumeRoundReveal = useStore((s) => s.consumeRoundReveal)
   const sitoutNames = round.sitoutIds.map(nameOf)
@@ -105,6 +112,22 @@ function RoundView({ round, nameOf }: { round: Round; nameOf: (id: string) => st
   // exists while the round is open; a locked round can never enter it.
   const [swapMode, setSwapMode] = useState(false)
   const [swapFirst, setSwapFirst] = useState<string | null>(null)
+
+  // Re-roll discards the current matchups. Once any score is entered, it takes
+  // a second tap to confirm so scores are never silently thrown away.
+  const [rerollArmed, setRerollArmed] = useState(false)
+  const hasScores = round.courts.some((c) => c.teams.some((t) => t.score !== null))
+
+  // Disarm the re-roll confirm if scores clear or a fresh round replaces this.
+  useEffect(() => {
+    if (!hasScores) setRerollArmed(false)
+  }, [hasScores])
+  // The armed state self-expires so a stale confirm never lingers.
+  useEffect(() => {
+    if (!rerollArmed) return
+    const t = setTimeout(() => setRerollArmed(false), 4000)
+    return () => clearTimeout(t)
+  }, [rerollArmed])
 
   // A locked round cannot be edited — drop any swap state if the round locks.
   useEffect(() => {
@@ -157,7 +180,7 @@ function RoundView({ round, nameOf }: { round: Round; nameOf: (id: string) => st
         className={cn(
           'inline-flex min-h-11 items-center rounded border px-2 py-1 text-[15px] font-bold leading-none transition-colors duration-150',
           selected
-            ? 'border-signal bg-signal text-on-signal'
+            ? 'border-signal-deep bg-signal-deep text-on-signal'
             : 'border-rule bg-paper text-ink active:bg-sunk',
         )}
       >
@@ -186,10 +209,10 @@ function RoundView({ round, nameOf }: { round: Round; nameOf: (id: string) => st
         <span
           className={cn(
             'flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-[0.13em]',
-            round.locked ? 'text-ink-faint' : 'text-signal',
+            round.locked ? 'text-ink-faint' : 'text-signal-deep',
           )}
         >
-          {!round.locked && <span className="live-dot h-2 w-2 rounded-full bg-signal" />}
+          {!round.locked && <span className="live-dot h-2 w-2 rounded-full bg-signal-deep" />}
           {round.locked ? 'Completed' : 'In progress'}
         </span>
       </div>
@@ -214,6 +237,12 @@ function RoundView({ round, nameOf }: { round: Round; nameOf: (id: string) => st
             </p>
           )}
         </div>
+      )}
+
+      {round.courts.length < courtCount && (
+        <p className="text-[11px] font-bold uppercase tracking-[0.1em] tabular-nums text-ink-soft">
+          Roster fills {round.courts.length} of {courtCount} courts
+        </p>
       )}
 
       <div className="space-y-3">
@@ -247,7 +276,8 @@ function RoundView({ round, nameOf }: { round: Round; nameOf: (id: string) => st
                   data-winner={isWinner}
                   className={cn(
                     'relative flex items-center gap-2.5 overflow-hidden px-3 py-3',
-                    ti === 1 && 'border-t border-rule',
+                    // 2px ink rule structurally splits the two opposing teams.
+                    ti === 1 && 'border-t-2 border-ink',
                   )}
                 >
                   <span aria-hidden="true" className="win-wash" />
@@ -256,8 +286,12 @@ function RoundView({ round, nameOf }: { round: Round; nameOf: (id: string) => st
                   </span>
                   <span
                     className={cn(
-                      'relative flex min-w-0 shrink items-center text-[15px] font-bold text-ink',
-                      swapMode ? 'flex-wrap gap-1.5' : 'truncate',
+                      // Plain block when not swapping so the name truncates
+                      // with a real ellipsis; a flex span never would.
+                      'relative min-w-0 shrink text-[15px] font-bold text-ink',
+                      swapMode
+                        ? 'flex flex-wrap items-center gap-1.5'
+                        : 'block truncate',
                     )}
                   >
                     {swapMode ? (
@@ -271,7 +305,7 @@ function RoundView({ round, nameOf }: { round: Round; nameOf: (id: string) => st
                   </span>
                   <span
                     aria-hidden="true"
-                    className="relative h-0 min-w-[10px] flex-1 self-center border-b border-dotted border-ink-faint"
+                    className="relative h-0 min-w-[2rem] flex-1 self-center border-b border-dotted border-ink-faint"
                   />
                   <input
                     data-testid="score-input"
@@ -279,13 +313,14 @@ function RoundView({ round, nameOf }: { round: Round; nameOf: (id: string) => st
                     min={0}
                     inputMode="numeric"
                     aria-label={`Score for ${names.join(' and ')}`}
+                    placeholder="–"
                     disabled={round.locked}
                     value={team.score ?? ''}
                     onChange={(e) => setScore(round.index, ci, ti, parseScore(e.target.value))}
                     className={cn(
-                      'relative h-11 w-14 shrink-0 rounded border text-center text-lg font-extrabold tabular-nums transition-colors duration-150 focus:outline-none',
+                      'relative h-11 w-14 shrink-0 rounded border text-center text-lg font-extrabold tabular-nums transition-colors duration-150 placeholder:text-ink-faint focus:outline-none',
                       isWinner
-                        ? 'border-signal bg-signal text-on-signal delay-150'
+                        ? 'border-signal-deep bg-signal-deep text-on-signal delay-150'
                         : 'border-rule bg-paper text-ink focus:border-ink',
                     )}
                   />
@@ -345,11 +380,20 @@ function RoundView({ round, nameOf }: { round: Round; nameOf: (id: string) => st
           <Button
             data-testid="reroll-round"
             variant="outline"
-            onClick={rerollRound}
+            onClick={() => {
+              // First tap arms when scores exist; second tap (or no scores
+              // at all) re-rolls — scores are never silently discarded.
+              if (hasScores && !rerollArmed) {
+                setRerollArmed(true)
+                return
+              }
+              setRerollArmed(false)
+              rerollRound()
+            }}
             className="min-h-12 w-full"
           >
             <span aria-hidden="true">&#8635;</span>
-            <span>Re-roll round</span>
+            <span>{rerollArmed ? 'Discard scores & re-roll' : 'Re-roll round'}</span>
           </Button>
           <Button
             data-testid="end-round"
@@ -472,7 +516,7 @@ function HistoryRound({
                   </span>
                   <span
                     aria-hidden="true"
-                    className="h-0 min-w-[10px] flex-1 self-center border-b border-dotted border-ink-faint"
+                    className="h-0 min-w-[2rem] flex-1 self-center border-b border-dotted border-ink-faint"
                   />
                   <input
                     data-testid="history-score-input"
@@ -480,12 +524,13 @@ function HistoryRound({
                     min={0}
                     inputMode="numeric"
                     aria-label={`Correct score for ${names.join(' and ')}, round ${round.index}`}
+                    placeholder="–"
                     value={team.score ?? ''}
                     onChange={(e) => setScore(round.index, ci, ti, parseScore(e.target.value))}
                     className={cn(
-                      'h-11 w-14 shrink-0 rounded border text-center text-lg font-extrabold tabular-nums transition-colors duration-150 focus:outline-none',
+                      'h-11 w-14 shrink-0 rounded border text-center text-lg font-extrabold tabular-nums transition-colors duration-150 placeholder:text-ink-faint focus:outline-none',
                       isWinner
-                        ? 'border-signal bg-signal text-on-signal'
+                        ? 'border-signal-deep bg-signal-deep text-on-signal'
                         : 'border-rule bg-paper text-ink focus:border-ink',
                     )}
                   />

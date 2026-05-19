@@ -11,7 +11,7 @@ colors:
   sunk: "oklch(0.955 0.009 78)"
   ink: "oklch(0.235 0.014 62)"
   ink-soft: "oklch(0.505 0.016 62)"
-  ink-faint: "oklch(0.66 0.014 62)"
+  ink-faint: "oklch(0.55 0.016 62)"
   rule: "oklch(0.235 0.014 62 / 0.16)"
 typography:
   display:
@@ -163,8 +163,9 @@ A warm paper-and-ink field carrying exactly one saturated voice.
 - **Ink** (`oklch(0.235 0.014 62)`): Primary text, structural 2px rules, and the
   fill for selected/active controls.
 - **Ink Soft** (`oklch(0.505 0.016 62)`): Secondary text and section labels.
-- **Ink Faint** (`oklch(0.66 0.014 62)`): Tertiary text, placeholders, dotted
-  leader lines, inactive states.
+- **Ink Faint** (`oklch(0.55 0.016 62)`): Tertiary text, placeholders, dotted
+  leader lines, inactive states. Held at or above 4.5:1 contrast on every
+  surface so it stays legal for text in direct sunlight.
 - **Rule** (`oklch(0.235 0.014 62 / 0.16)`): The hairline. Every 1px divider and
   quiet border.
 

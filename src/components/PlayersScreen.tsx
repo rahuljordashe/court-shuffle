@@ -9,14 +9,20 @@ export function PlayersScreen() {
   const rounds = useStore((s) => s.rounds)
   const courtCount = useStore((s) => s.courtCount)
   const addPlayer = useStore((s) => s.addPlayer)
+  const addPlayerError = useStore((s) => s.addPlayerError)
+  const clearAddPlayerError = useStore((s) => s.clearAddPlayerError)
   const setCourtCount = useStore((s) => s.setCourtCount)
   const resetSession = useStore((s) => s.resetSession)
   const roundCount = rounds.length
   const [name, setName] = useState('')
+  const nameInputRef = useRef<HTMLInputElement>(null)
 
   const submit = () => {
     addPlayer(name)
-    setName('')
+    // Keep the typed text if the name was rejected; clear it on success.
+    if (!useStore.getState().addPlayerError) setName('')
+    // Return focus to the field so the next name needs no extra tap.
+    nameInputRef.current?.focus()
   }
 
   // Rotation math runs on `playing` players. Resting players stay in the
@@ -114,20 +120,40 @@ export function PlayersScreen() {
             <span className="text-ink-faint"> &middot; {leftCount} checked out</span>
           )}
         </SectionLabel>
-        <div className="flex gap-2">
-          <TextInput
-            data-testid="player-name-input"
-            className="flex-1"
-            placeholder="Player name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') submit()
-            }}
-          />
-          <Button data-testid="add-player" onClick={submit} className="px-5">
-            Add
-          </Button>
+        <div className="space-y-1.5">
+          <div className="flex gap-2">
+            <TextInput
+              ref={nameInputRef}
+              data-testid="player-name-input"
+              className="flex-1"
+              aria-label="New player name"
+              aria-invalid={addPlayerError ? true : undefined}
+              aria-describedby={addPlayerError ? 'add-player-error' : undefined}
+              placeholder="Player name"
+              value={name}
+              onChange={(e) => {
+                setName(e.target.value)
+                if (addPlayerError) clearAddPlayerError()
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') submit()
+              }}
+            />
+            <Button data-testid="add-player" onClick={submit} className="px-5">
+              Add
+            </Button>
+          </div>
+          <div role="alert">
+            {addPlayerError && (
+              <p
+                id="add-player-error"
+                data-testid="add-player-error"
+                className="text-[11px] font-bold uppercase tracking-[0.1em] text-signal-deep"
+              >
+                {addPlayerError}
+              </p>
+            )}
+          </div>
         </div>
 
         {players.length === 0 ? (
@@ -187,6 +213,9 @@ function PlayerRow({
   const togglePoolMember = useStore((s) => s.togglePoolMember)
   const setPlayerResting = useStore((s) => s.setPlayerResting)
   const checkOutPlayer = useStore((s) => s.checkOutPlayer)
+  const reinstatePlayer = useStore((s) => s.reinstatePlayer)
+  // The name to fall back to if an inline rename is committed blank.
+  const committedName = useRef(player.name)
 
   // A locked partner or pool member must still be in the session.
   const others = all.filter((o) => o.id !== player.id && o.status !== 'left')
@@ -199,7 +228,7 @@ function PlayerRow({
     .join(',')
 
   // A checked-out player is shown as a quiet record row: name kept for the
-  // standings, controls gone. They rejoin only if the session is cleared.
+  // standings, with a single control to bring them back into the session.
   if (player.status === 'left') {
     return (
       <li
@@ -217,6 +246,14 @@ function PlayerRow({
         <span className="shrink-0 rounded border border-rule px-2 py-1 text-[10px] font-extrabold uppercase tracking-[0.1em] text-ink-faint">
           Checked out
         </span>
+        <button
+          data-testid="player-reinstate"
+          aria-label={`Bring ${player.name} back into the session`}
+          onClick={() => reinstatePlayer(player.id)}
+          className="spring-press flex min-h-11 shrink-0 items-center rounded-md border border-rule px-3 text-[11px] font-extrabold uppercase tracking-[0.1em] text-ink-soft transition-colors duration-150 hover:border-ink"
+        >
+          Bring back
+        </button>
       </li>
     )
   }
@@ -238,9 +275,18 @@ function PlayerRow({
           data-testid="player-name"
           aria-label="Player name"
           value={player.name}
+          onFocus={() => {
+            committedName.current = player.name
+          }}
           onChange={(e) => renamePlayer(player.id, e.target.value)}
+          onBlur={(e) => {
+            // Normalise on commit; a blank rename reverts to the last good
+            // name so a player can never be left nameless.
+            const next = e.target.value.trim().replace(/\s+/g, ' ')
+            renamePlayer(player.id, next || committedName.current)
+          }}
           className={cn(
-            'min-w-0 flex-1 border-b border-transparent bg-transparent pb-0.5 text-base font-bold focus:border-ink focus:outline-none',
+            'min-h-11 min-w-0 flex-1 border-b-2 border-transparent bg-transparent pb-0.5 text-base font-bold focus:border-ink focus:outline-none',
             resting ? 'text-ink-faint' : 'text-ink',
           )}
         />
@@ -260,50 +306,11 @@ function PlayerRow({
             data-testid="player-remove"
             aria-label={`Remove ${player.name}`}
             onClick={() => removePlayer(player.id)}
-            className="flex h-12 w-10 shrink-0 items-center justify-center rounded-md border border-rule text-ink-faint transition-colors duration-150 hover:border-signal hover:text-signal"
+            className="flex h-12 w-11 shrink-0 items-center justify-center rounded-md border border-rule text-ink-faint transition-colors duration-150 hover:border-signal hover:text-signal"
           >
             &#10005;
           </button>
         )}
-      </div>
-
-      <div className="flex gap-2">
-        <button
-          data-testid="player-rest-toggle"
-          aria-pressed={resting}
-          aria-label={
-            resting
-              ? `${player.name} is resting — tap to bring back into rotation`
-              : `${player.name} is in rotation — tap to rest the next round`
-          }
-          onClick={() => setPlayerResting(player.id, !resting)}
-          className={cn(
-            'spring-press flex min-h-11 flex-1 items-center justify-between gap-2 rounded-md border px-3',
-            'text-[11px] font-extrabold uppercase tracking-[0.12em]',
-            resting
-              ? 'border-rule bg-sunk text-ink-soft'
-              : 'border-ink bg-ink text-paper',
-          )}
-        >
-          <span>{resting ? 'Resting' : 'In rotation'}</span>
-          <span
-            aria-hidden="true"
-            className={cn(
-              'rounded px-2 py-0.5 text-[10px] tracking-[0.1em]',
-              resting ? 'bg-ink text-paper' : 'border border-paper/40 text-paper',
-            )}
-          >
-            {resting ? 'Bring in' : 'Rest'}
-          </span>
-        </button>
-        <button
-          data-testid="player-checkout"
-          aria-label={`Check ${player.name} out for the rest of the session`}
-          onClick={() => checkOutPlayer(player.id)}
-          className="spring-press flex min-h-11 shrink-0 items-center rounded-md border border-rule px-3 text-[11px] font-extrabold uppercase tracking-[0.1em] text-ink-soft transition-colors duration-150 hover:border-signal hover:text-signal"
-        >
-          Check out
-        </button>
       </div>
 
       {player.mode === 'locked' && (
@@ -363,6 +370,45 @@ function PlayerRow({
           )}
         </div>
       )}
+
+      <div className="flex gap-2">
+        <button
+          data-testid="player-rest-toggle"
+          aria-pressed={resting}
+          aria-label={
+            resting
+              ? `${player.name} is resting — tap to bring back into rotation`
+              : `${player.name} is in rotation — tap to rest the next round`
+          }
+          onClick={() => setPlayerResting(player.id, !resting)}
+          className={cn(
+            'spring-press flex min-h-11 flex-1 items-center justify-between gap-2 rounded-md border px-3',
+            'text-[11px] font-extrabold uppercase tracking-[0.12em]',
+            resting
+              ? 'border-rule bg-sunk text-ink-soft'
+              : 'border-ink bg-ink text-paper',
+          )}
+        >
+          <span>{resting ? 'Resting' : 'In rotation'}</span>
+          <span
+            aria-hidden="true"
+            className={cn(
+              'rounded px-2 py-0.5 text-[10px] tracking-[0.1em]',
+              resting ? 'bg-ink text-paper' : 'border border-paper/40 text-paper',
+            )}
+          >
+            {resting ? 'Bring in' : 'Rest'}
+          </span>
+        </button>
+        <button
+          data-testid="player-checkout"
+          aria-label={`Check ${player.name} out for the rest of the session`}
+          onClick={() => checkOutPlayer(player.id)}
+          className="spring-press flex min-h-11 shrink-0 items-center rounded-md border border-rule px-3 text-[11px] font-extrabold uppercase tracking-[0.1em] text-ink-soft transition-colors duration-150 hover:border-signal hover:text-signal"
+        >
+          Check out
+        </button>
+      </div>
     </li>
   )
 }
@@ -404,7 +450,8 @@ function PoolChip({
       data-selected={selected}
       onClick={onClick}
       className={cn(
-        'min-h-11 rounded border px-2.5 text-xs font-bold uppercase tracking-[0.04em] transition-colors duration-150',
+        // Fixed 44px height; long names truncate rather than balloon the chip.
+        'h-11 max-w-[7.5rem] truncate rounded border px-2.5 text-xs font-bold uppercase tracking-[0.04em] transition-colors duration-150',
         selected ? 'border-ink bg-ink text-paper' : 'border-rule bg-paper text-ink-soft',
       )}
     >

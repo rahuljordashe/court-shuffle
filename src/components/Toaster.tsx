@@ -80,7 +80,11 @@ export function Toaster() {
   if (!shown) return null
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+4.75rem)] z-20 mx-auto max-w-md px-5">
+    <div
+      role="status"
+      aria-live="polite"
+      className="pointer-events-none fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+3.5rem)] z-20 mx-auto max-w-md px-5"
+    >
       <div
         data-testid="toast"
         className={cn(

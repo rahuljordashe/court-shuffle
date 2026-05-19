@@ -27,6 +27,11 @@ reasonable option.
   benches units in strict order of prior sit-out count, so session totals stay
   even (spread 0–1), and within a tier anyone who sat the previous round is
   picked last, so nobody sits back-to-back unless it is unavoidable.
+- A player can be **rested** (sits the next round, stays in the session) or
+  **checked out** (removed from every future round, leaderboard record kept).
+  Checkout is reversible: a checked-out player can be brought back into the
+  session and returns as `resting`, so an accidental checkout never needs a
+  full session clear to undo.
 - Generation is a **scored randomised search**: 2500 candidate rounds are built,
   hard constraints filter out infeasible candidates, and the best-scored survivor
   is kept. Score priority: avoid back-to-back sit-outs >> new partnerships >>
