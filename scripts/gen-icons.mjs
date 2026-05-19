@@ -1,4 +1,6 @@
 // Generates PNG app icons with no external dependencies.
+// Mark: "Court" — a top-down pickleball court (boundary, kitchen lines,
+// centre lines, net with posts) in paper on the signal vermilion field.
 import { deflateSync } from 'node:zlib'
 import { writeFileSync, mkdirSync } from 'node:fs'
 
@@ -27,25 +29,49 @@ function chunk(type, data) {
   return Buffer.concat([len, t, data, crc])
 }
 
+// The mark, defined on a 512 canvas. Court lines are all axis-aligned, so the
+// whole icon is the vermilion field plus this list of paper rectangles.
+const SIGNAL = [192, 67, 42] // vermilion field
+const PAPER = [247, 244, 239] // court lines
+const MARK = [
+  [140, 104, 232, 15], // boundary: top rail
+  [140, 393, 232, 15], // boundary: bottom rail
+  [140, 104, 15, 304], // boundary: left rail
+  [357, 104, 15, 304], // boundary: right rail
+  [140, 199, 232, 10], // non-volley (kitchen) line, near side
+  [140, 303, 232, 10], // non-volley (kitchen) line, far side
+  [251, 104, 10, 100], // centre line, near half
+  [251, 308, 10, 100], // centre line, far half
+  [112, 243, 288, 26], // net, posts overhanging the sidelines
+]
+
 function png(size) {
   const raw = Buffer.alloc(size * (size * 4 + 1))
-  const cx = size / 2
-  const cy = size / 2
+  const k = size / 512
+  const SS = 4 // supersample for clean edges at any size
   for (let y = 0; y < size; y++) {
     const row = y * (size * 4 + 1)
-    raw[row] = 0
+    raw[row] = 0 // PNG filter byte
     for (let x = 0; x < size; x++) {
-      const i = row + 1 + x * 4
-      let r = 192, g = 67, b = 42 // vermilion background
-      const d = Math.hypot(x - cx, y - cy)
-      if (d < size * 0.18) {
-        r = 248; g = 245; b = 239 // ball
-      } else if (d > size * 0.22 && d < size * 0.34) {
-        r = 226; g = 158; b = 142 // ring
+      let hits = 0
+      for (let sy = 0; sy < SS; sy++) {
+        const Y = (y + (sy + 0.5) / SS) / k
+        for (let sx = 0; sx < SS; sx++) {
+          const X = (x + (sx + 0.5) / SS) / k
+          for (let m = 0; m < MARK.length; m++) {
+            const [rx, ry, rw, rh] = MARK[m]
+            if (X >= rx && X < rx + rw && Y >= ry && Y < ry + rh) {
+              hits++
+              break
+            }
+          }
+        }
       }
-      raw[i] = r
-      raw[i + 1] = g
-      raw[i + 2] = b
+      const t = hits / (SS * SS)
+      const i = row + 1 + x * 4
+      raw[i] = Math.round(SIGNAL[0] + (PAPER[0] - SIGNAL[0]) * t)
+      raw[i + 1] = Math.round(SIGNAL[1] + (PAPER[1] - SIGNAL[1]) * t)
+      raw[i + 2] = Math.round(SIGNAL[2] + (PAPER[2] - SIGNAL[2]) * t)
       raw[i + 3] = 255
     }
   }
@@ -66,5 +92,6 @@ function png(size) {
 mkdirSync('public', { recursive: true })
 writeFileSync('public/icon-192.png', png(192))
 writeFileSync('public/icon-512.png', png(512))
+// Court content sits inside the maskable safe zone, so one image serves both.
 writeFileSync('public/maskable-512.png', png(512))
 console.log('icons generated: icon-192.png, icon-512.png, maskable-512.png')
